@@ -1,0 +1,81 @@
+# Swift / Xcode 표준 .gitignore
+# 출처: github.com/github/gitignore/blob/main/Swift.gitignore + Objective-C.gitignore
+
+## User settings
+xcuserdata/
+*.xcuserstate
+*.xcuserdatad/
+
+## Build generated
+build/
+DerivedData/
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+## Various settings (xcode가 자동 갱신)
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+
+## Obj-C/Swift specific
+*.moved-aside
+
+## Swift Package Manager
+.swiftpm/
+.build/
+Package.resolved
+Packages/
+Package.pins
+
+## CocoaPods
+Pods/
+
+## Carthage
+Carthage/Build/
+
+## fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output
+
+## XcodeGen으로 생성되는 파일 — 학생 환경에서 매번 재생성
+RoomieSync.xcodeproj/
+RoomieSync.xcworkspace/
+
+## macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+## OS / 편집기
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+*.iml
+
+## 환경 설정 / 비밀
+.env
+.env.local
+*.p12
+*.mobileprovision
+*.certSigningRequest
+
+## 빌드 산출물 / 로그
+*.log
+*.xcresult
+
+## 프로젝트 임시 파일
+TODO.local.md
+
+## Git workflow 스크립트 임시 디렉토리
+.refactor_snapshot/

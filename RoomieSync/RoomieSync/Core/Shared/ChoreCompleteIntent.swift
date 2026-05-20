@@ -12,8 +12,11 @@ import AppIntents
 
 /// 위젯의 "완료" 버튼 탭 → 앱을 열지 않고 처리.
 public struct CompleteChoreIntent: AppIntent {
+    @MainActor
     public static var title: LocalizedStringResource = "가사 완료 표시"
+    @MainActor
     public static var description = IntentDescription("위젯에서 오늘의 가사를 완료 표시합니다.")
+    @MainActor
     public static var openAppWhenRun: Bool = false
 
     @Parameter(title: "가사 ID")
@@ -72,7 +75,9 @@ public enum PendingWidgetActions {
 
 /// 위젯 configurable — 어느 그룹의 위젯인지 선택.
 public struct SelectGroupIntent: AppIntent, WidgetConfigurationIntent {
+    @MainActor
     public static var title: LocalizedStringResource = "그룹 선택"
+    @MainActor
     public static var description = IntentDescription("위젯에 표시할 RoomieSync 그룹을 선택합니다.")
 
     @Parameter(title: "그룹 이름", default: "우리집")

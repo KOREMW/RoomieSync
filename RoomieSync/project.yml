@@ -1,0 +1,138 @@
+# RoomieSync — XcodeGen project specification
+# 사용법 (macOS):
+#   brew install xcodegen
+#   xcodegen generate
+#   open RoomieSync.xcodeproj
+#
+# 작성자: 엄민욱 (2091188)
+
+name: RoomieSync
+
+options:
+  bundleIdPrefix: com.roomiesync
+  developmentLanguage: ko
+  deploymentTarget:
+    iOS: '17.0'
+  createIntermediateGroups: true
+  generateEmptyDirectories: true
+  groupSortPosition: top
+  defaultConfig: Debug
+
+settings:
+  base:
+    SWIFT_VERSION: '6.0'
+    SWIFT_STRICT_CONCURRENCY: complete
+    SWIFT_UPCOMING_FEATURE_EXISTENTIAL_ANY: YES
+    SWIFT_TREAT_WARNINGS_AS_ERRORS: NO
+    MARKETING_VERSION: '1.0.0'
+    CURRENT_PROJECT_VERSION: '1'
+    CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: ''
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+
+targets:
+  # ===== 메인 앱 =====
+  RoomieSync:
+    type: application
+    platform: iOS
+    deploymentTarget: '17.0'
+    sources:
+      - path: RoomieSync
+        excludes:
+          - Widget/**
+          - LiveActivity/**
+          - Resources/**
+      - path: RoomieSync/Resources
+        type: folder
+    info:
+      path: RoomieSync/Info.plist
+      properties:
+        CFBundleDisplayName: RoomieSync
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        UILaunchScreen:
+          UIColorName: ''
+        UIRequiresFullScreen: false
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        NSUserTrackingUsageDescription: 사용자 활동을 추적하지 않습니다.
+        UIBackgroundModes:
+          - remote-notification
+          - fetch
+        CFBundleURLTypes:
+          - CFBundleURLSchemes:
+              - roomiesync
+            CFBundleURLName: com.roomiesync.app
+    entitlements:
+      path: RoomieSync/RoomieSync.entitlements
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.roomiesync.app
+        PRODUCT_NAME: RoomieSync
+        ENABLE_PREVIEWS: YES
+        TARGETED_DEVICE_FAMILY: '1'
+        SUPPORTS_MACCATALYST: NO
+        CODE_SIGN_ENTITLEMENTS: RoomieSync/RoomieSync.entitlements
+    dependencies:
+      - target: RoomieSyncWidgets
+        embed: true
+
+  # ===== Widget Extension (위젯 + Live Activity 통합) =====
+  RoomieSyncWidgets:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: '17.0'
+    sources:
+      - RoomieSync/Widget
+      - RoomieSync/LiveActivity
+      # SharedData 는 main app + extension 양쪽 모두 컴파일
+      - RoomieSync/Core/Shared
+    info:
+      path: RoomieSync/Widget/Info.plist
+      properties:
+        CFBundleDisplayName: RoomieSync
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    entitlements:
+      path: RoomieSync/Widget/RoomieSyncWidgets.entitlements
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.roomiesync.app.widgets
+        PRODUCT_NAME: RoomieSyncWidgets
+        CODE_SIGN_ENTITLEMENTS: RoomieSync/Widget/RoomieSyncWidgets.entitlements
+        TARGETED_DEVICE_FAMILY: '1'
+
+  # ===== 단위 테스트 =====
+  RoomieSyncTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: '17.0'
+    sources:
+      - RoomieSyncTests
+    dependencies:
+      - target: RoomieSync
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.roomiesync.app.tests
+        TEST_HOST: $(BUILT_PRODUCTS_DIR)/RoomieSync.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/RoomieSync
+        BUNDLE_LOADER: $(TEST_HOST)
+        GENERATE_INFOPLIST_FILE: YES
+
+schemes:
+  RoomieSync:
+    build:
+      targets:
+        RoomieSync: all
+        RoomieSyncWidgets: all
+        RoomieSyncTests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      gatherCoverageData: true
+      targets:
+        - RoomieSyncTests
+    archive:
+      config: Release

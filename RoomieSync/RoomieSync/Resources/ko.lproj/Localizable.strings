@@ -1,0 +1,62 @@
+/*
+  Localizable.strings (ko)
+  RoomieSync
+  계획서 참조: 5.1 라벨링 — 한국어 직관 라벨
+  작성자: 엄민욱 (2091188)
+*/
+
+// 탭
+"tab.home" = "홈";
+"tab.chore" = "가사";
+"tab.expense" = "지출";
+"tab.stats" = "통계";
+
+// 공통
+"common.cancel" = "취소";
+"common.save" = "저장";
+"common.confirm" = "확인";
+"common.delete" = "삭제";
+"common.add" = "추가";
+"common.loading" = "불러오는 중...";
+
+// 홈
+"home.today" = "오늘 할 일";
+"home.weeklySettlement" = "이번 주 정산";
+"home.distribution" = "가사 분담 현황";
+"home.settle" = "정산하기";
+"home.greeting" = "안녕하세요, %@님 👋";
+"home.greetingSub" = "오늘도 좋은 하루 보내세요";
+
+// 가사
+"chore.title" = "가사 당번";
+"chore.filter.all" = "전체";
+"chore.filter.daily" = "매일";
+"chore.filter.weekly" = "주1회";
+"chore.filter.monthly" = "월1회";
+"chore.complete" = "완료";
+"chore.mine" = "내 차례";
+"chore.swap" = "오늘 못해요 (다음 멤버에게)";
+"chore.empty.title" = "아직 가사가 없어요";
+"chore.empty.message" = "쓰레기·설거지·청소 같은 가사를 추가하면\n자동으로 멤버 순서대로 배정돼요.";
+"chore.add.title" = "새 가사";
+
+// 지출
+"expense.title" = "공동 지출";
+"expense.monthTotal" = "이번 달 총 지출";
+"expense.usedTogether" = "%d명이 함께 사용";
+"expense.add.title" = "지출 추가";
+"expense.add.amount" = "금액";
+"expense.add.itemName" = "항목 이름";
+"expense.add.date" = "날짜";
+"expense.add.payer" = "결제한 사람";
+"expense.add.participants" = "함께 사용한 사람";
+"expense.perPerson" = "각자 부담: %@";
+
+// 통계
+"stats.title" = "통계";
+"stats.choreCount" = "가사 완료 횟수";
+"stats.last30days" = "지난 30일간";
+"stats.fairness" = "공정 지수: %d%%";
+"stats.monthlyTrend" = "월별 지출 추이";
+"stats.category" = "카테고리별 지출";
+"stats.mvp" = "이번 달 가사 MVP";

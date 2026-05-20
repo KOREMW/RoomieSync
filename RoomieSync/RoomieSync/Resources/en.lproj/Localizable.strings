@@ -1,0 +1,30 @@
+/*
+  Localizable.strings (en) — fallback
+  RoomieSync · 엄민욱 (2091188)
+*/
+
+"tab.home" = "Home";
+"tab.chore" = "Chores";
+"tab.expense" = "Expenses";
+"tab.stats" = "Stats";
+
+"common.cancel" = "Cancel";
+"common.save" = "Save";
+"common.confirm" = "Confirm";
+"common.delete" = "Delete";
+"common.add" = "Add";
+
+"home.today" = "Today";
+"home.weeklySettlement" = "This Week's Settlement";
+"home.distribution" = "Chore Distribution";
+"home.settle" = "Settle Up";
+
+"chore.title" = "Chores";
+"chore.complete" = "Done";
+"chore.mine" = "My turn";
+
+"expense.title" = "Shared Expenses";
+"expense.add.title" = "Add Expense";
+
+"stats.title" = "Statistics";
+"stats.mvp" = "Chore MVP";

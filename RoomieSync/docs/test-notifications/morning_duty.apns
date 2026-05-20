@@ -1,0 +1,11 @@
+{
+    "aps": {
+        "alert": {
+            "title": "오늘 쓰레기 당번이에요 🗑",
+            "body": "김지훈님, 잊지 말고 챙겨주세요!"
+        },
+        "sound": "default",
+        "category": "CATEGORY_DUTY"
+    },
+    "choreID": "test-chore-uuid"
+}

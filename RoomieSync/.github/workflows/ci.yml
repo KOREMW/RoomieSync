@@ -1,0 +1,56 @@
+# RoomieSync CI — macos-latest runner
+# 작성자: 엄민욱 (2091188)
+#
+# PR/push 시 자동으로:
+#  1) XcodeGen으로 .xcodeproj 생성
+#  2) iOS 시뮬레이터 빌드
+#  3) xcodebuild test 실행
+
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-test:
+    runs-on: macos-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_15.4.app/Contents/Developer || true
+        # macos-latest 의 Xcode 버전이 자주 바뀌므로 best-effort. 26.5 가 runner 에 들어오면 그걸로 갱신.
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Build app
+        run: |
+          xcodebuild build \
+            -scheme RoomieSync \
+            -destination 'platform=iOS Simulator,name=iPhone 15 Pro,OS=latest' \
+            -configuration Debug \
+            CODE_SIGNING_ALLOWED=NO \
+            | xcpretty || true
+
+      - name: Run Swift Testing
+        run: |
+          xcodebuild test \
+            -scheme RoomieSync \
+            -destination 'platform=iOS Simulator,name=iPhone 15 Pro,OS=latest' \
+            -configuration Debug \
+            CODE_SIGNING_ALLOWED=NO \
+            -enableCodeCoverage YES \
+            | xcpretty --test --color || exit 1

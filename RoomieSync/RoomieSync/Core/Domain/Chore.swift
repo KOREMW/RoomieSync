@@ -1,0 +1,74 @@
+//
+//  Chore.swift
+//  RoomieSync
+//
+//  계획서 참조: 3.2 데이터 모델 — Chore, 6.1 #3 가사 세팅
+//  작성자: 엄민욱 (2091188)
+//  Created: 2026-05-19
+//
+
+import Foundation
+
+/// 가사 주기. 시안 ②의 칩 ("매일", "주1회", "월1회") 와 1:1 매핑.
+public enum ChoreCycle: String, Hashable, Sendable, Codable, CaseIterable {
+    case daily              // 매일
+    case weekly             // 주 1 회
+    case monthly            // 월 1 회
+
+    /// 사용자 노출 한국어 라벨
+    public var displayName: String {
+        switch self {
+        case .daily:   return "매일"
+        case .weekly:  return "주 1회"
+        case .monthly: return "월 1회"
+        }
+    }
+
+    /// 다음 차례 계산용 인터벌 (일 단위).
+    /// monthly 는 정확히 30 일로 근사 — 정확한 캘린더 산수는 RotateChore use-case 에서 별도 처리.
+    public var approximateIntervalDays: Int {
+        switch self {
+        case .daily:   return 1
+        case .weekly:  return 7
+        case .monthly: return 30
+        }
+    }
+}
+
+/// 가사 항목. currentAssigneeID 가 다음 차례 멤버를 가리키며, 완료 체크 시 다음 멤버로 회전.
+public struct Chore: Identifiable, Hashable, Sendable, Codable {
+    public let id: UUID
+    public var groupID: UUID
+    public var title: String
+    /// SF Symbol 또는 이모지. 시안 ②의 🗑️/🍽/🧹/🚿 와 같이 그대로 보여줌.
+    public var icon: String
+    public var cycleType: ChoreCycle
+    public var currentAssigneeID: UUID
+    public var nextDueDate: Date
+    /// 로테이션 시작 시점 — 멤버 추가/제거 시 순서 안정성 보장용 (1-6 RotationTests).
+    public var rotationStartedAt: Date
+    /// 가사가 처음 만들어졌을 때의 멤버 순서 스냅샷. 회전은 이 순서를 따른다.
+    public var rotationMemberIDs: [UUID]
+
+    public init(
+        id: UUID = UUID(),
+        groupID: UUID,
+        title: String,
+        icon: String,
+        cycleType: ChoreCycle,
+        currentAssigneeID: UUID,
+        nextDueDate: Date,
+        rotationStartedAt: Date = .now,
+        rotationMemberIDs: [UUID]
+    ) {
+        self.id = id
+        self.groupID = groupID
+        self.title = title
+        self.icon = icon
+        self.cycleType = cycleType
+        self.currentAssigneeID = currentAssigneeID
+        self.nextDueDate = nextDueDate
+        self.rotationStartedAt = rotationStartedAt
+        self.rotationMemberIDs = rotationMemberIDs
+    }
+}

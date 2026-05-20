@@ -1,0 +1,168 @@
+//
+//  HomeView.swift
+//  RoomieSync
+//
+//  계획서 참조: Stitch 시안 ① (홈)
+//  작성자: 엄민욱 (2091188)
+//  Created: 2026-05-19
+//
+
+import SwiftUI
+
+struct HomeView: View {
+
+    let groupID: UUID
+    @Environment(\.repositories) private var repositories
+    @State private var viewModel: HomeViewModel?
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: Spacing.xl) {
+                headerSection
+                    .padding(.horizontal, Spacing.l)
+                    .padding(.top, Spacing.l)
+                if let vm = viewModel {
+                    todayChoresCard(vm)
+                    weeklySettlementCard(vm)
+                    distributionCard(vm)
+                } else {
+                    ProgressView().padding(Spacing.xxl)
+                }
+            }
+            .padding(.bottom, Spacing.xxxl)
+        }
+        .background(Tokens.surface.ignoresSafeArea())
+        .task {
+            if viewModel == nil {
+                viewModel = HomeViewModel(groupID: groupID, repositories: repositories)
+            }
+            await viewModel?.load()
+        }
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Text("RoomieSync")
+                    .font(Typo.bodyBold())
+                    .foregroundStyle(Tokens.textPrimary)
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                HStack(spacing: Spacing.m) {
+                    Image(systemName: "bell").foregroundStyle(Tokens.textSecondary)
+                    NavigationLink {
+                        SettingsView(groupID: groupID)
+                    } label: {
+                        Image(systemName: "gearshape").foregroundStyle(Tokens.textSecondary)
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var headerSection: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("안녕하세요, \(viewModel?.greetingName ?? "")님 👋")
+                .font(Typo.title())
+                .foregroundStyle(Tokens.textPrimary)
+            Text("오늘도 좋은 하루 보내세요")
+                .font(Typo.body())
+                .foregroundStyle(Tokens.textSecondary)
+        }
+    }
+
+    @ViewBuilder
+    private func todayChoresCard(_ vm: HomeViewModel) -> some View {
+        SectionCard {
+            HStack {
+                Text("오늘 할 일").font(Typo.sectionTitle()).foregroundStyle(Tokens.textPrimary)
+                Spacer()
+                Image(systemName: "chevron.right").foregroundStyle(Tokens.textTertiary)
+            }
+            if vm.todayChores.isEmpty {
+                Text("아직 등록된 가사가 없어요")
+                    .font(Typo.caption()).foregroundStyle(Tokens.textSecondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.vertical, Spacing.m)
+            } else {
+                VStack(spacing: Spacing.s) {
+                    ForEach(vm.todayChores.prefix(3)) { chore in
+                        choreRow(chore, viewModel: vm)
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func choreRow(_ chore: Chore, viewModel: HomeViewModel) -> some View {
+        let isMine = chore.currentAssigneeID == viewModel.currentUserID
+        let assignee = viewModel.membersByID[chore.currentAssigneeID]
+        HStack(spacing: Spacing.m) {
+            Text(chore.icon.isEmpty ? "✓" : chore.icon)
+                .font(.system(size: 24))
+                .frame(width: 36, height: 36)
+                .background(Tokens.surfaceMuted)
+                .clipShape(RoundedRectangle(cornerRadius: Radius.s))
+            Text(chore.title).font(Typo.body()).foregroundStyle(Tokens.textPrimary)
+            Spacer()
+            if isMine {
+                Text("내 차례")
+                    .font(.system(size: 12, weight: .semibold))
+                    .padding(.horizontal, Spacing.s).padding(.vertical, 4)
+                    .background(Tokens.payCardBG)
+                    .foregroundStyle(Tokens.danger)
+                    .clipShape(RoundedRectangle(cornerRadius: Radius.s))
+            } else if let assignee {
+                HStack(spacing: 6) {
+                    Text(assignee.name).font(Typo.caption()).foregroundStyle(Tokens.textSecondary)
+                    MemberAvatarView(member: assignee, size: 24)
+                }
+            }
+        }
+        .padding(Spacing.m)
+        .background(Tokens.surfaceMuted)
+        .clipShape(RoundedRectangle(cornerRadius: Radius.m))
+    }
+
+    @ViewBuilder
+    private func weeklySettlementCard(_ vm: HomeViewModel) -> some View {
+        SectionCard {
+            HStack {
+                Text("이번 주 정산").font(Typo.sectionTitle())
+                Spacer()
+                Image(systemName: "info.circle").foregroundStyle(Tokens.textTertiary)
+            }
+            HStack(spacing: Spacing.m) {
+                BalanceCard(kind: .receive, amount: vm.receiveAmount)
+                BalanceCard(kind: .pay, amount: vm.payAmount)
+            }
+            RoomieButton("정산하기") {}.padding(.top, Spacing.s)
+        }
+    }
+
+    @ViewBuilder
+    private func distributionCard(_ vm: HomeViewModel) -> some View {
+        SectionCard {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("가사 분담 현황").font(Typo.sectionTitle())
+                    Text("이번 주 전체 완료율 \(Int(vm.weekCompletionRate * 100))%")
+                        .font(Typo.caption()).foregroundStyle(Tokens.textSecondary)
+                }
+                Spacer()
+                Image(systemName: "chart.bar.fill")
+                    .font(.system(size: 32)).foregroundStyle(Tokens.divider)
+            }
+            ProgressView(value: vm.weekCompletionRate)
+                .progressViewStyle(.linear).tint(Tokens.success)
+        }
+    }
+
+}
+
+#Preview("시안 ① 홈") {
+    let (repos, groupID) = InMemorySeed.preview()
+    return NavigationStack {
+        HomeView(groupID: groupID).environment(\.repositories, repos)
+    }
+}

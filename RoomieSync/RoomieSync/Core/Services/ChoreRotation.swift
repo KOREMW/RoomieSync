@@ -57,10 +57,8 @@ public enum ChoreRotation {
             updated.currentAssigneeID = nextAssignee(chore)
         }
         updated.rotationMemberIDs.removeAll { $0 == memberID }
-        // 회전 결과가 비어버린 케이스 안전 처리
-        if updated.rotationMemberIDs.isEmpty {
-            updated.currentAssigneeID = updated.currentAssigneeID  // 변동 없음, 다음 사이클부터 미할당
-        }
+        // 회전 결과가 비어버린 케이스: currentAssigneeID 는 그대로 유지(변동 없음),
+        // 다음 사이클부터 미할당 상태가 된다 — 별도 처리 불필요.
         return updated
     }
 

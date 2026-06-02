@@ -41,9 +41,9 @@ targets:
         excludes:
           - Widget/**
           - LiveActivity/**
-          - Resources/**
-      - path: RoomieSync/Resources
-        type: folder
+      # Resources 는 일반 그룹으로 포함해야 Asset Catalog 가 Assets.car 로 컴파일되고
+      # .lproj 가 번들 루트에 배치된다. (type: folder 로 두면 Resources/ 하위 폴더 참조가
+      # 되어 iOS 번들 구조가 깨지고 host CFBundle 이 bundle id 를 못 읽는다.)
     info:
       path: RoomieSync/Info.plist
       properties:
@@ -56,6 +56,8 @@ targets:
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         NSUserTrackingUsageDescription: 사용자 활동을 추적하지 않습니다.
+        NSSupportsLiveActivities: true
+        NSSupportsLiveActivitiesFrequentUpdates: true
         UIBackgroundModes:
           - remote-notification
           - fetch
@@ -65,6 +67,15 @@ targets:
             CFBundleURLName: com.roomiesync.app
     entitlements:
       path: RoomieSync/RoomieSync.entitlements
+      properties:
+        com.apple.developer.icloud-container-identifiers:
+          - iCloud.com.roomiesync.app
+        com.apple.developer.icloud-services:
+          - CloudKit
+        com.apple.developer.ubiquity-kvstore-identifier: $(TeamIdentifierPrefix)com.roomiesync.app
+        aps-environment: development
+        com.apple.security.application-groups:
+          - group.com.roomiesync.shared
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.roomiesync.app
@@ -95,8 +106,13 @@ targets:
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
+        NSSupportsLiveActivities: true
+        NSSupportsLiveActivitiesFrequentUpdates: true
     entitlements:
       path: RoomieSync/Widget/RoomieSyncWidgets.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.roomiesync.shared
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.roomiesync.app.widgets

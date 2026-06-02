@@ -29,6 +29,10 @@ settings:
     CODE_SIGN_STYLE: Automatic
     DEVELOPMENT_TEAM: ''
     ENABLE_USER_SCRIPT_SANDBOXING: YES
+    # App Intents SSU(Siri 자연어) 학습 단계가 Xcode 26.5 의 appintentsnltrainingprocessor
+    # 버그로 "Unable to parse Info.plist" 실패 → 메타데이터 추출/SSU 단계를 끈다.
+    # 위젯의 AppIntent 버튼·구성 가능 위젯은 런타임 동작이라 영향 없음(Siri/스포트라이트 등록만 비활성).
+    ENABLE_APPINTENTS_METADATA_EXTRACTION: NO
 
 # ===== Swift Package 의존성 =====
 packages:

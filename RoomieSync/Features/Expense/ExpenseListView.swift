@@ -16,6 +16,7 @@ struct ExpenseListView: View {
     @State private var showAddSheet: Bool = false
     @State private var settlementPlan: [Settlement] = []
     @State private var showSettlementSheet: Bool = false
+    @State private var editingExpense: Expense? = nil
 
     var body: some View {
         ScrollView {
@@ -34,8 +35,11 @@ struct ExpenseListView: View {
                         .frame(minHeight: 360)
                     } else {
                         ForEach(vm.filtered) { exp in
-                            expenseRow(exp, vm: vm)
-                                .padding(.horizontal, Spacing.l)
+                            Button { editingExpense = exp } label: {
+                                expenseRow(exp, vm: vm)
+                            }
+                            .buttonStyle(.plain)
+                            .padding(.horizontal, Spacing.l)
                         }
                     }
                 } else {
@@ -47,28 +51,9 @@ struct ExpenseListView: View {
         .background(Tokens.surface.ignoresSafeArea())
         .navigationTitle("공동 지출")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Menu {
-                    Button("정산 실행", systemImage: "checkmark.circle") {
-                        Task {
-                            if let vm = viewModel {
-                                settlementPlan = await vm.performSettlement()
-                                showSettlementSheet = !settlementPlan.isEmpty
-                            }
-                        }
-                    }
-                    Button("필터 초기화", systemImage: "line.3.horizontal.decrease.circle") {
-                        viewModel?.filter = .all
-                    }
-                } label: {
-                    Image(systemName: "line.3.horizontal.decrease.circle")
-                }
-            }
-        }
         .overlay(alignment: .bottomTrailing) {
             if let vm = viewModel, !vm.filtered.isEmpty {
-                RoomieButton("+ 지출 추가", icon: "plus") {
+                RoomieButton("지출 추가", icon: "plus") {
                     showAddSheet = true
                 }
                 .fixedSize()
@@ -78,6 +63,11 @@ struct ExpenseListView: View {
         .sheet(isPresented: $showAddSheet) {
             if let vm = viewModel {
                 ExpenseAddView(viewModel: vm)
+            }
+        }
+        .sheet(item: $editingExpense) { exp in
+            if let vm = viewModel {
+                ExpenseAddView(viewModel: vm, editing: exp)
             }
         }
         .sheet(isPresented: $showSettlementSheet) {
@@ -98,9 +88,26 @@ struct ExpenseListView: View {
     @ViewBuilder
     private func monthTotalCard(_ vm: ExpenseViewModel) -> some View {
         VStack(alignment: .leading, spacing: Spacing.s) {
-            Text("이번 달 총 지출")
-                .font(Typo.caption())
-                .foregroundStyle(.white.opacity(0.8))
+            HStack(alignment: .center) {
+                Text("이번 달 총 지출")
+                    .font(Typo.caption())
+                    .foregroundStyle(.white.opacity(0.8))
+                Spacer()
+                Button {
+                    Task { await runSettlement(vm) }
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "checkmark.circle.fill")
+                        Text("정산하기")
+                    }
+                    .font(.system(size: 13, weight: .semibold))
+                    .padding(.horizontal, Spacing.m)
+                    .padding(.vertical, 7)
+                    .background(.white)
+                    .foregroundStyle(Tokens.primary)
+                    .clipShape(Capsule())
+                }
+            }
             Text(CurrencyFormatter.format(vm.totalThisMonth))
                 .font(Typo.amount(28))
                 .foregroundStyle(.white)
@@ -140,8 +147,26 @@ struct ExpenseListView: View {
                 }
             }
             Spacer()
+            Button { vm.filter = .all } label: {
+                Image(systemName: "arrow.counterclockwise")
+                    .font(.system(size: 13, weight: .semibold))
+                    .padding(8)
+                    .background(Tokens.surfaceContainer)
+                    .foregroundStyle(Tokens.textSecondary)
+                    .clipShape(Circle())
+            }
+            .disabled(vm.filter == .all)
+            .opacity(vm.filter == .all ? 0.4 : 1)
         }
         .padding(.horizontal, Spacing.l)
+    }
+
+    // MARK: - 정산 실행
+
+    @MainActor
+    private func runSettlement(_ vm: ExpenseViewModel) async {
+        settlementPlan = await vm.performSettlement()
+        showSettlementSheet = !settlementPlan.isEmpty
     }
 
     // MARK: - 지출 행

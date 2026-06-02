@@ -87,6 +87,34 @@ public final class ExpenseViewModel {
         }
     }
 
+    public func updateExpense(_ expense: Expense) async -> Bool {
+        do {
+            _ = try await expenseRepo.updateExpense(expense)
+            await load()
+            return true
+        } catch RepositoryError.invalidInput(let reason) {
+            errorMessage = reason
+            return false
+        } catch {
+            errorMessage = CKErrorMapper.userMessage(for: error)
+            return false
+        }
+    }
+
+    public func deleteExpense(_ expenseID: UUID) async -> Bool {
+        do {
+            try await expenseRepo.deleteExpense(expenseID)
+            await load()
+            return true
+        } catch RepositoryError.invalidInput(let reason) {
+            errorMessage = reason
+            return false
+        } catch {
+            errorMessage = CKErrorMapper.userMessage(for: error)
+            return false
+        }
+    }
+
     public func performSettlement() async -> [Settlement] {
         do {
             let pending = expenses.filter { !$0.isSettled }

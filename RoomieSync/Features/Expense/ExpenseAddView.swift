@@ -12,6 +12,8 @@ import SwiftUI
 struct ExpenseAddView: View {
     @Environment(\.dismiss) private var dismiss
     let viewModel: ExpenseViewModel
+    /// nil 이면 신규 추가, 값이 있으면 해당 지출 수정 모드.
+    var editing: Expense? = nil
 
     @State private var amountText: String = ""
     @State private var title: String = ""
@@ -21,6 +23,11 @@ struct ExpenseAddView: View {
     @State private var category: ExpenseCategory = .household
     @State private var memo: String = ""
     @State private var isWorking: Bool = false
+    @State private var didPrefill: Bool = false
+    @State private var showDeleteConfirm: Bool = false
+
+    private var isEditing: Bool { editing != nil }
+    private var isSettled: Bool { editing?.isSettled ?? false }
 
     private var amount: Decimal { Decimal(string: amountText) ?? 0 }
     private var perPerson: Decimal {
@@ -106,23 +113,58 @@ struct ExpenseAddView: View {
                     TextField("메모를 입력하세요", text: $memo, axis: .vertical)
                         .lineLimit(2...4)
                 }
+
+                if isEditing {
+                    Section {
+                        Button(role: .destructive) {
+                            showDeleteConfirm = true
+                        } label: {
+                            HStack {
+                                Spacer()
+                                Label("이 지출 삭제", systemImage: "trash")
+                                Spacer()
+                            }
+                        }
+                        .disabled(isWorking || isSettled)
+                    } footer: {
+                        if isSettled {
+                            Text("정산 완료된 지출은 수정·삭제할 수 없습니다.")
+                        }
+                    }
+                }
             }
-            .navigationTitle("지출 추가")
+            .navigationTitle(isEditing ? "지출 수정" : "지출 추가")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("취소") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("저장") {
+                    Button(isEditing ? "수정" : "저장") {
                         Task { await save() }
                     }
-                    .disabled(!canSave || isWorking)
+                    .disabled(!canSave || isWorking || isSettled)
                 }
             }
+            .confirmationDialog("이 지출을 삭제할까요?", isPresented: $showDeleteConfirm, titleVisibility: .visible) {
+                Button("삭제", role: .destructive) { Task { await deleteExpense() } }
+                Button("취소", role: .cancel) {}
+            }
             .task {
-                paidByID = viewModel.members.first?.id
-                participantIDs = Set(viewModel.members.map(\.id))
+                guard !didPrefill else { return }
+                didPrefill = true
+                if let e = editing {
+                    amountText = NSDecimalNumber(decimal: e.amount).stringValue
+                    title = e.title
+                    date = e.date
+                    paidByID = e.paidByMemberID
+                    participantIDs = Set(e.participantMemberIDs)
+                    category = e.category
+                    memo = e.memo ?? ""
+                } else {
+                    paidByID = viewModel.members.first?.id
+                    participantIDs = Set(viewModel.members.map(\.id))
+                }
             }
         }
     }
@@ -140,17 +182,32 @@ struct ExpenseAddView: View {
         isWorking = true
         defer { isWorking = false }
         let expense = Expense(
+            id: editing?.id ?? UUID(),
             groupID: viewModel.groupID,
             title: title.trimmingCharacters(in: .whitespaces),
             amount: amount,
             paidByMemberID: payer,
             participantMemberIDs: Array(participantIDs),
             date: date,
-            isSettled: false,
+            isSettled: editing?.isSettled ?? false,
             category: category,
             memo: memo.isEmpty ? nil : memo
         )
-        let ok = await viewModel.addExpense(expense)
+        let ok = isEditing
+            ? await viewModel.updateExpense(expense)
+            : await viewModel.addExpense(expense)
+        if ok {
+            HapticManager.shared.success()
+            dismiss()
+        }
+    }
+
+    @MainActor
+    private func deleteExpense() async {
+        guard let id = editing?.id else { return }
+        isWorking = true
+        defer { isWorking = false }
+        let ok = await viewModel.deleteExpense(id)
         if ok {
             HapticManager.shared.success()
             dismiss()

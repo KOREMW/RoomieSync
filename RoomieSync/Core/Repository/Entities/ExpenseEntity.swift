@@ -23,6 +23,8 @@ public final class ExpenseEntity {
     public var isSettled: Bool = false
     public var categoryRaw: String = ExpenseCategory.other.rawValue
     public var memo: String? = nil
+    /// 참여자별 직접 부담금 — { uuidString: 금액문자열 } JSON. 빈 문자열이면 균등 분배(nil).
+    public var customSharesJSON: String = ""
     /// 영수증 이미지 — Data 는 CloudKit 의 CKAsset 으로 자동 매핑됨
     @Attribute(.externalStorage)
     public var receiptImageData: Data? = nil
@@ -76,8 +78,27 @@ public extension ExpenseEntity {
             isSettled: isSettled,
             category: category,
             memo: memo,
-            receiptImageData: receiptImageData
+            receiptImageData: receiptImageData,
+            customShares: Self.decodeShares(customSharesJSON)
         )
+    }
+
+    static func decodeShares(_ json: String) -> [UUID: Decimal]? {
+        guard !json.isEmpty,
+              let data = json.data(using: .utf8),
+              let raw = try? JSONDecoder().decode([String: String].self, from: data) else { return nil }
+        var result: [UUID: Decimal] = [:]
+        for (k, v) in raw {
+            if let id = UUID(uuidString: k), let dec = Decimal(string: v) { result[id] = dec }
+        }
+        return result.isEmpty ? nil : result
+    }
+
+    static func encodeShares(_ shares: [UUID: Decimal]?) -> String {
+        guard let shares, !shares.isEmpty else { return "" }
+        let raw = Dictionary(uniqueKeysWithValues: shares.map { ($0.key.uuidString, NSDecimalNumber(decimal: $0.value).stringValue) })
+        guard let data = try? JSONEncoder().encode(raw), let json = String(data: data, encoding: .utf8) else { return "" }
+        return json
     }
 
     func apply(_ domain: Expense) {
@@ -93,5 +114,6 @@ public extension ExpenseEntity {
         self.categoryRaw = domain.category.rawValue
         self.memo = domain.memo
         self.receiptImageData = domain.receiptImageData
+        self.customSharesJSON = Self.encodeShares(domain.customShares)
     }
 }

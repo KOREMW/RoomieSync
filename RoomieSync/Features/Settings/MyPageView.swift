@@ -178,21 +178,14 @@ struct MyPageView: View {
                     Label("이 그룹에서 나가기", systemImage: "rectangle.portrait.and.arrow.right")
                 }
             }
-
-            Section("정보") {
-                LabeledContent("학번", value: "2091188")
-                LabeledContent("작성자", value: "엄민욱")
-                LabeledContent("버전", value: "1.0.0")
-                LabeledContent("라이선스", value: "MIT")
-            }
         }
         .navigationTitle("마이페이지")
         .navigationBarTitleDisplayMode(.inline)
-        .confirmationDialog("이 그룹에서 나갈까요?", isPresented: $showLeaveConfirm, titleVisibility: .visible) {
+        .alert("이 그룹에서 나갈까요?", isPresented: $showLeaveConfirm) {
             Button("나가기", role: .destructive) { Task { await leaveGroup() } }
             Button("취소", role: .cancel) {}
         } message: {
-            Text("그룹에서 나가면 이 기기에서 그룹 화면을 떠나 시작 화면으로 돌아갑니다.")
+            Text("다른 모임이 있으면 그 모임으로 이동하고, 없으면 시작 화면으로 돌아갑니다.")
         }
         .task {
             let settings = await UNUserNotificationCenter.current().notificationSettings()
@@ -206,11 +199,17 @@ struct MyPageView: View {
 
     @MainActor
     private func leaveGroup() async {
+        // 1) 내 멤버 제거
         if let id = myMemberID {
-            _ = try? await repositories.group.removeMember(id)
+            try? await repositories.group.removeMember(id)
         }
-        // 현재 그룹 해제 → RootView 가 그룹 시작 화면으로 전환
-        currentGroupIDString = ""
+        // 2) 그룹이 비었으면 그룹 자체 삭제 (목록에 남지 않도록)
+        if let g = try? await repositories.group.fetchGroup(id: groupID), g.memberIDs.isEmpty {
+            try? await repositories.group.deleteGroup(groupID)
+        }
+        // 3) 남은 다른 모임이 있으면 그 중 하나로 이동, 없으면 시작 화면("")
+        let others = (try? await repositories.group.fetchAllGroups())?.filter { $0.id != groupID } ?? []
+        currentGroupIDString = others.first?.id.uuidString ?? ""
     }
 
     @MainActor

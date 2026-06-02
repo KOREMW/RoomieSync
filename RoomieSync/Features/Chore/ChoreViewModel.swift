@@ -18,7 +18,7 @@ public enum ChoreFilter: String, CaseIterable, Identifiable {
         case .all:     return "전체"
         case .daily:   return "매일"
         case .weekly:  return "매주"
-        case .monthly: return "매 월"
+        case .monthly: return "매월"
         case .once:    return "선택"
         }
     }

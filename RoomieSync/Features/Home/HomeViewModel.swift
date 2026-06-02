@@ -63,12 +63,11 @@ public final class HomeViewModel {
 
             let weekAgo = Calendar.current.date(byAdding: .day, value: -7, to: .now) ?? .now
             let weekCompletions = try await choreRepo.fetchAllCompletions(groupID: groupID, since: weekAgo)
-            let expected = todayChores.reduce(0.0) { sum, chore in
-                sum + 7.0 / Double(chore.cycleType.approximateIntervalDays)
-            }
-            weekCompletionRate = expected > 0
-                ? min(1.0, Double(weekCompletions.count) / expected)
-                : 0
+            // 완료율 = (이번 주 1회 이상 완료된 가사 수) / (전체 가사 수)
+            // 가사 2개 중 1개 완료 → 50% 처럼 가사 1개당 비율이 직관적으로 반영된다.
+            let completedChoreIDs = Set(weekCompletions.map(\.choreID))
+            let doneCount = todayChores.filter { completedChoreIDs.contains($0.id) }.count
+            weekCompletionRate = todayChores.isEmpty ? 0 : Double(doneCount) / Double(todayChores.count)
 
             let myUndoneCount = todayChores.filter { $0.currentAssigneeID == currentUserID }.count
             NotificationService.shared.setBadge(myUndoneCount)

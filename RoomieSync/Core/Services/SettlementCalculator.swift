@@ -43,13 +43,12 @@ public enum SettlementCalculator {
         for expense in expenses {
             let participants = expense.participantMemberIDs
             guard !participants.isEmpty, expense.amount > 0 else { continue }
-            let share = expense.amount / Decimal(participants.count)
 
             // 결제자는 amount 만큼 받을 권리
             net[expense.paidByMemberID, default: 0] += expense.amount
-            // 참여자 각자는 share 만큼 줄 의무
+            // 참여자 각자는 자기 부담금(직접 입력 또는 균등)만큼 줄 의무
             for participantID in participants {
-                net[participantID, default: 0] -= share
+                net[participantID, default: 0] -= expense.share(for: participantID)
             }
         }
 
@@ -113,10 +112,9 @@ public enum SettlementCalculator {
         for expense in expenses {
             let participants = expense.participantMemberIDs
             guard !participants.isEmpty, expense.amount > 0 else { continue }
-            let share = expense.amount / Decimal(participants.count)
             net[expense.paidByMemberID, default: 0] += expense.amount
             for pid in participants {
-                net[pid, default: 0] -= share
+                net[pid, default: 0] -= expense.share(for: pid)
             }
         }
         return net

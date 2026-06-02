@@ -44,6 +44,10 @@ struct HomeView: View {
             }
             await viewModel?.load()
         }
+        .onAppear {
+            // 다른 탭(가사 완료 등) 다녀온 뒤 돌아오면 즉시 최신화
+            if viewModel != nil { Task { await viewModel?.load() } }
+        }
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
@@ -144,6 +148,9 @@ struct HomeView: View {
             }
             RoomieButton("정산하기") {}.padding(.top, Spacing.s)
         }
+        // '정산하기' 버튼을 제외한 컨테이너 전체를 탭하면 정산 내역으로 이동
+        .contentShape(Rectangle())
+        .onTapGesture { showBreakdown = true }
     }
 
     @ViewBuilder

@@ -21,7 +21,7 @@ public enum ChoreCycle: String, Hashable, Sendable, Codable, CaseIterable {
         switch self {
         case .daily:   return "매일"
         case .weekly:  return "매주"
-        case .monthly: return "매 월"
+        case .monthly: return "매월"
         case .once:    return "선택"
         }
     }

@@ -22,6 +22,8 @@ struct ExpenseAddView: View {
     @State private var participantIDs: Set<UUID> = []
     @State private var category: ExpenseCategory = .household
     @State private var memo: String = ""
+    @State private var customSplit: Bool = false              // false = 더치페이(균등)
+    @State private var customAmounts: [UUID: String] = [:]    // 참여자별 직접 입력 금액
     @State private var isWorking: Bool = false
     @State private var didPrefill: Bool = false
     @State private var showDeleteConfirm: Bool = false
@@ -99,12 +101,47 @@ struct ExpenseAddView: View {
                         }
                         .buttonStyle(.plain)
                     }
-                    if !participantIDs.isEmpty {
-                        HStack {
-                            Spacer()
-                            Text("각자 부담: \(CurrencyFormatter.format(perPerson))")
-                                .font(Typo.caption())
-                                .foregroundStyle(Tokens.textSecondary)
+                }
+
+                if !participantIDs.isEmpty {
+                    Section("분배 방식") {
+                        Picker("분배 방식", selection: $customSplit) {
+                            Text("더치페이(균등)").tag(false)
+                            Text("직접 입력").tag(true)
+                        }
+                        .pickerStyle(.segmented)
+
+                        if customSplit {
+                            ForEach(viewModel.members.filter { participantIDs.contains($0.id) }) { m in
+                                HStack {
+                                    MemberAvatarView(member: m, size: 24)
+                                    Text(m.name)
+                                    Spacer()
+                                    TextField("0", text: bindingForCustom(m.id))
+                                        .keyboardType(.numberPad)
+                                        .multilineTextAlignment(.trailing)
+                                        .frame(maxWidth: 110)
+                                    Text("원").foregroundStyle(Tokens.textSecondary)
+                                }
+                            }
+                            let sum = customSum
+                            HStack {
+                                Text("합계")
+                                Spacer()
+                                Text("\(CurrencyFormatter.format(sum)) / \(CurrencyFormatter.format(amount))")
+                                    .foregroundStyle(sum == amount ? Tokens.success : Tokens.danger)
+                            }
+                            .font(Typo.caption())
+                            if sum != amount {
+                                Text("부담금 합계가 총 금액과 일치해야 저장할 수 있어요.")
+                                    .font(Typo.caption()).foregroundStyle(Tokens.danger)
+                            }
+                        } else {
+                            HStack {
+                                Spacer()
+                                Text("각자 부담: \(CurrencyFormatter.format(perPerson))")
+                                    .font(Typo.caption()).foregroundStyle(Tokens.textSecondary)
+                            }
                         }
                     }
                 }
@@ -161,6 +198,11 @@ struct ExpenseAddView: View {
                     participantIDs = Set(e.participantMemberIDs)
                     category = e.category
                     memo = e.memo ?? ""
+                    if let shares = e.customShares, !shares.isEmpty {
+                        customSplit = true
+                        customAmounts = Dictionary(uniqueKeysWithValues:
+                            shares.map { ($0.key, NSDecimalNumber(decimal: $0.value).stringValue) })
+                    }
                 } else {
                     paidByID = viewModel.members.first?.id
                     participantIDs = Set(viewModel.members.map(\.id))
@@ -169,11 +211,30 @@ struct ExpenseAddView: View {
         }
     }
 
+    private func bindingForCustom(_ id: UUID) -> Binding<String> {
+        Binding(
+            get: { customAmounts[id] ?? "" },
+            set: { customAmounts[id] = $0.filter(\.isNumber) }
+        )
+    }
+
+    private var customSum: Decimal {
+        participantIDs.reduce(Decimal(0)) { $0 + (Decimal(string: customAmounts[$1] ?? "") ?? 0) }
+    }
+
+    private var builtCustomShares: [UUID: Decimal]? {
+        guard customSplit else { return nil }
+        var shares: [UUID: Decimal] = [:]
+        for id in participantIDs { shares[id] = Decimal(string: customAmounts[id] ?? "") ?? 0 }
+        return shares
+    }
+
     private var canSave: Bool {
         amount > 0 &&
         !title.trimmingCharacters(in: .whitespaces).isEmpty &&
         paidByID != nil &&
-        !participantIDs.isEmpty
+        !participantIDs.isEmpty &&
+        (!customSplit || customSum == amount)
     }
 
     @MainActor
@@ -191,7 +252,8 @@ struct ExpenseAddView: View {
             date: date,
             isSettled: editing?.isSettled ?? false,
             category: category,
-            memo: memo.isEmpty ? nil : memo
+            memo: memo.isEmpty ? nil : memo,
+            customShares: builtCustomShares
         )
         let ok = isEditing
             ? await viewModel.updateExpense(expense)

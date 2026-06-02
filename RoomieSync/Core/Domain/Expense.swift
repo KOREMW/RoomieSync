@@ -22,6 +22,8 @@ public struct Expense: Identifiable, Hashable, Sendable, Codable {
     public var category: ExpenseCategory    // 시안 ⑤ 도넛 차트용
     public var memo: String?
     public var receiptImageData: Data?      // 시안 ④ 영수증 첨부 (선택)
+    /// 직접 입력한 참여자별 부담금. nil 이면 균등 분배(더치페이).
+    public var customShares: [UUID: Decimal]?
 
     public init(
         id: UUID = UUID(),
@@ -34,7 +36,8 @@ public struct Expense: Identifiable, Hashable, Sendable, Codable {
         isSettled: Bool = false,
         category: ExpenseCategory = .other,
         memo: String? = nil,
-        receiptImageData: Data? = nil
+        receiptImageData: Data? = nil,
+        customShares: [UUID: Decimal]? = nil
     ) {
         self.id = id
         self.groupID = groupID
@@ -47,13 +50,19 @@ public struct Expense: Identifiable, Hashable, Sendable, Codable {
         self.category = category
         self.memo = memo
         self.receiptImageData = receiptImageData
+        self.customShares = customShares
     }
 
     /// 1 인당 부담액 (균등 분배). 시안 ④ "각자 부담: 3,300원" 표시.
-    /// 참여자 0 명이면 0 반환 — 저장 단계에서 0 명을 차단해야 하나 안전 디폴트.
     public var amountPerParticipant: Decimal {
         guard !participantMemberIDs.isEmpty else { return 0 }
         return amount / Decimal(participantMemberIDs.count)
+    }
+
+    /// 특정 멤버의 부담금 — 직접 입력값이 있으면 그 값, 없으면 균등 분배.
+    public func share(for memberID: UUID) -> Decimal {
+        if let custom = customShares?[memberID] { return custom }
+        return amountPerParticipant
     }
 }
 

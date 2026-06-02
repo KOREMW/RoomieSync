@@ -162,6 +162,10 @@ extension Expense {
             "category": category.rawValue
         ]
         if let memo { dict["memo"] = memo }
+        if let customShares, !customShares.isEmpty {
+            dict["customShares"] = Dictionary(uniqueKeysWithValues:
+                customShares.map { ($0.key.uuidString, FSMap.dbl($0.value)) })
+        }
         // receiptImageData 는 Firestore 1MB 문서 제한 때문에 동기화하지 않음 (운영 시 Cloud Storage 권장)
         return dict
     }
@@ -173,10 +177,18 @@ extension Expense {
               let date = FSMap.date(d["date"]),
               let catRaw = FSMap.str(d["category"]),
               let cat = ExpenseCategory(rawValue: catRaw) else { return nil }
+        var shares: [UUID: Decimal]? = nil
+        if let raw = d["customShares"] as? [String: Any] {
+            var parsed: [UUID: Decimal] = [:]
+            for (k, v) in raw {
+                if let uid = UUID(uuidString: k) { parsed[uid] = FSMap.decimal(v) }
+            }
+            shares = parsed.isEmpty ? nil : parsed
+        }
         self.init(id: id, groupID: gid, title: title, amount: FSMap.decimal(d["amount"]),
                   paidByMemberID: paidBy, participantMemberIDs: FSMap.uuids(d["participantMemberIDs"]),
                   date: date, isSettled: FSMap.bool(d["isSettled"]), category: cat,
-                  memo: FSMap.str(d["memo"]), receiptImageData: nil)
+                  memo: FSMap.str(d["memo"]), receiptImageData: nil, customShares: shares)
     }
 }
 

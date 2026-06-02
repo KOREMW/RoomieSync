@@ -72,12 +72,11 @@ struct SettlementBreakdownView: View {
         // 줄 돈: 내가 낼 1인 부담
         let amount: Decimal = {
             guard let me = meID, !exp.participantMemberIDs.isEmpty else { return 0 }
-            let per = exp.amount / Decimal(exp.participantMemberIDs.count)
             if isReceive {
-                let others = exp.participantMemberIDs.filter { $0 != me }.count
-                return per * Decimal(others)
+                // 다른 참여자들이 내게 줄 부담금 합
+                return exp.participantMemberIDs.filter { $0 != me }.reduce(Decimal(0)) { $0 + exp.share(for: $1) }
             } else {
-                return per
+                return exp.share(for: me)
             }
         }()
         HStack(spacing: Spacing.m) {

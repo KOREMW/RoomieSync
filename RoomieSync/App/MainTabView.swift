@@ -11,23 +11,29 @@ import SwiftUI
 
 struct MainTabView: View {
     let groupID: UUID
+    @State private var tab: Int = 0
 
     var body: some View {
-        TabView {
-            NavigationStack { HomeView(groupID: groupID) }
+        TabView(selection: $tab) {
+            NavigationStack { HomeView(groupID: groupID, onOpenChores: { tab = 1 }) }
                 .tabItem { Label("홈", systemImage: "house.fill") }
+                .tag(0)
 
             NavigationStack { ChoreListView(groupID: groupID) }
                 .tabItem { Label("가사", systemImage: "checkmark.square.fill") }
+                .tag(1)
 
             NavigationStack { ExpenseListView(groupID: groupID) }
                 .tabItem { Label("지출", systemImage: "creditcard.fill") }
+                .tag(2)
 
             NavigationStack { StatsView(groupID: groupID) }
                 .tabItem { Label("통계", systemImage: "chart.bar.fill") }
+                .tag(3)
 
             NavigationStack { MyPageView(groupID: groupID) }
                 .tabItem { Label("마이페이지", systemImage: "person.crop.circle.fill") }
+                .tag(4)
         }
         .tint(Tokens.primary)
     }

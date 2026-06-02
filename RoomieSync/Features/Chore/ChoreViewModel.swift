@@ -74,19 +74,42 @@ public final class ChoreViewModel {
         }
     }
 
-    public func addChore(title: String, icon: String, cycle: ChoreCycle) async -> Bool {
+    public func addChore(title: String, icon: String, cycle: ChoreCycle, weekdays: [Int]) async -> Bool {
         do {
             let chore = try await choreRepo.createChore(
                 groupID: groupID,
                 title: title,
                 icon: icon,
                 cycle: cycle,
+                weekdays: weekdays,
                 rotationMemberIDs: members.map(\.id)
             )
             if let assignee = members.first(where: { $0.id == chore.currentAssigneeID }) {
                 await NotificationService.shared.scheduleMorningDuty(chore: chore, memberName: assignee.name)
                 await NotificationService.shared.scheduleEveningReminder(chore: chore, memberName: assignee.name)
             }
+            await load()
+            return true
+        } catch {
+            errorMessage = CKErrorMapper.userMessage(for: error)
+            return false
+        }
+    }
+
+    public func updateChore(_ chore: Chore) async -> Bool {
+        do {
+            _ = try await choreRepo.updateChore(chore)
+            await load()
+            return true
+        } catch {
+            errorMessage = CKErrorMapper.userMessage(for: error)
+            return false
+        }
+    }
+
+    public func deleteChore(_ choreID: UUID) async -> Bool {
+        do {
+            try await choreRepo.deleteChore(choreID)
             await load()
             return true
         } catch {

@@ -2,11 +2,10 @@
 //  FirestoreChoreRepository.swift
 //  RoomieSync
 //
-//  ChoreRepositoryProtocol 의 Cloud Firestore 구현.
-//  로테이션/스왑 로직은 기존 ChoreRotation 순수 함수를 그대로 재사용해 SwiftData 구현과 동일하게 동작.
-//  자식 id 만 받는 메서드는 collectionGroup 쿼리로 문서 위치를 찾는다.
-//
-//  주의: collectionGroup + 다중 필터는 복합 인덱스를 요구할 수 있어, isConfirmed/기간 필터는 메모리에서 처리.
+//  ChoreRepositoryProtocol 의 Cloud Firestore 구현 (최상위 평면 컬렉션).
+//  chores/{id} · choreCompletions/{id} (groupID·choreID 필드 보유).
+//  by-id 는 document(id) 직접 접근, 그룹/가사별 조회는 단일 필드 whereField 만 사용.
+//  로테이션/스왑은 기존 ChoreRotation 순수 함수 재사용.
 //
 
 #if canImport(FirebaseFirestore)
@@ -15,7 +14,8 @@ import FirebaseFirestore
 
 public actor FirestoreChoreRepository: ChoreRepositoryProtocol {
     private let db = Firestore.firestore()
-    private var groups: CollectionReference { db.collection("groups") }
+    private var choresCol: CollectionReference { db.collection("chores") }
+    private var completionsCol: CollectionReference { db.collection("choreCompletions") }
 
     public init() {}
 
@@ -24,6 +24,7 @@ public actor FirestoreChoreRepository: ChoreRepositoryProtocol {
         title: String,
         icon: String,
         cycle: ChoreCycle,
+        weekdays: [Int],
         rotationMemberIDs: [UUID]
     ) async throws -> Chore {
         guard let first = rotationMemberIDs.first else {
@@ -31,20 +32,28 @@ public actor FirestoreChoreRepository: ChoreRepositoryProtocol {
         }
         let chore = Chore(groupID: groupID, title: title, icon: icon, cycleType: cycle,
                           currentAssigneeID: first, nextDueDate: nextDate(from: .now, cycle: cycle),
-                          rotationMemberIDs: rotationMemberIDs)
-        try await groups.document(groupID.uuidString)
-            .collection("chores").document(chore.id.uuidString)
-            .setData(chore.fsDict)
+                          rotationMemberIDs: rotationMemberIDs, weekdays: weekdays)
+        try await choresCol.document(chore.id.uuidString).setData(chore.fsDict)
+        return chore
+    }
+
+    public func updateChore(_ chore: Chore) async throws -> Chore {
+        let ref = choresCol.document(chore.id.uuidString)
+        let doc = try await ref.getDocument()
+        guard doc.exists else { throw RepositoryError.notFound }
+        try await ref.setData(chore.fsDict)
         return chore
     }
 
     public func fetchChores(groupID: UUID) async throws -> [Chore] {
-        let snap = try await groups.document(groupID.uuidString).collection("chores").getDocuments()
+        let snap = try await choresCol.whereField("groupID", isEqualTo: groupID.uuidString).getDocuments()
         return snap.documents.compactMap { Chore(fs: $0.data()) }.sorted { $0.title < $1.title }
     }
 
     public func fetchChore(id: UUID) async throws -> Chore {
-        try await choreDoc(id: id).1
+        let doc = try await choresCol.document(id.uuidString).getDocument()
+        guard let data = doc.data(), let chore = Chore(fs: data) else { throw RepositoryError.notFound }
+        return chore
     }
 
     public func recordCompletion(
@@ -53,17 +62,21 @@ public actor FirestoreChoreRepository: ChoreRepositoryProtocol {
         deviceIdentifier: String,
         isConfirmed: Bool
     ) async throws -> ChoreCompletion {
-        let (_, chore) = try await choreDoc(id: choreID)
+        let chore = try await fetchChore(id: choreID)
         let completion = ChoreCompletion(choreID: choreID, memberID: memberID,
                                          isConfirmed: isConfirmed, deviceIdentifier: deviceIdentifier)
-        try await groups.document(chore.groupID.uuidString)
-            .collection("choreCompletions").document(completion.id.uuidString)
-            .setData(completion.fsDict)
+        var dict = completion.fsDict
+        dict["groupID"] = chore.groupID.uuidString   // 그룹별 통계 조회용
+        try await completionsCol.document(completion.id.uuidString).setData(dict)
         return completion
     }
 
     public func cancelCompletion(_ completionID: UUID) async throws {
-        let (ref, completion) = try await completionDoc(id: completionID)
+        let ref = completionsCol.document(completionID.uuidString)
+        let doc = try await ref.getDocument()
+        guard let data = doc.data(), let completion = ChoreCompletion(fs: data) else {
+            throw RepositoryError.notFound
+        }
         guard !completion.isConfirmed else {
             throw RepositoryError.invalidInput(reason: "이미 확정된 완료는 취소할 수 없습니다")
         }
@@ -71,65 +84,44 @@ public actor FirestoreChoreRepository: ChoreRepositoryProtocol {
     }
 
     public func confirmCompletion(_ completionID: UUID) async throws -> Chore {
-        let (compRef, completion) = try await completionDoc(id: completionID)
+        let compRef = completionsCol.document(completionID.uuidString)
+        let compDoc = try await compRef.getDocument()
+        guard let cdata = compDoc.data(), let completion = ChoreCompletion(fs: cdata) else {
+            throw RepositoryError.notFound
+        }
         try await compRef.updateData(["isConfirmed": true])
-        let (choreRef, chore) = try await choreDoc(id: completion.choreID)
+        let chore = try await fetchChore(id: completion.choreID)
         let rotated = ChoreRotation.rotateToNext(chore)
-        try await choreRef.setData(rotated.fsDict)
+        try await choresCol.document(rotated.id.uuidString).setData(rotated.fsDict)
         return rotated
     }
 
     public func fetchCompletions(choreID: UUID) async throws -> [ChoreCompletion] {
-        let snap = try await db.collectionGroup("choreCompletions")
-            .whereField("choreID", isEqualTo: choreID.uuidString)
-            .getDocuments()
+        let snap = try await completionsCol.whereField("choreID", isEqualTo: choreID.uuidString).getDocuments()
         return snap.documents.compactMap { ChoreCompletion(fs: $0.data()) }
             .filter { $0.isConfirmed }
             .sorted { $0.completedAt > $1.completedAt }
     }
 
     public func fetchAllCompletions(groupID: UUID, since: Date?) async throws -> [ChoreCompletion] {
-        let snap = try await groups.document(groupID.uuidString).collection("choreCompletions").getDocuments()
+        let snap = try await completionsCol.whereField("groupID", isEqualTo: groupID.uuidString).getDocuments()
         var items = snap.documents.compactMap { ChoreCompletion(fs: $0.data()) }.filter { $0.isConfirmed }
         if let since { items = items.filter { $0.completedAt >= since } }
         return items.sorted { $0.completedAt > $1.completedAt }
     }
 
     public func swapWithNext(choreID: UUID) async throws -> Chore {
-        let (ref, chore) = try await choreDoc(id: choreID)
+        let chore = try await fetchChore(id: choreID)
         let swapped = ChoreRotation.swapCurrentWithNext(chore)
-        try await ref.setData(swapped.fsDict)
+        try await choresCol.document(swapped.id.uuidString).setData(swapped.fsDict)
         return swapped
     }
 
     public func deleteChore(_ choreID: UUID) async throws {
-        let (ref, _) = try await choreDoc(id: choreID)
-        try await ref.delete()
+        try await choresCol.document(choreID.uuidString).delete()
     }
 
     // MARK: - Private
-
-    private func choreDoc(id: UUID) async throws -> (DocumentReference, Chore) {
-        let snap = try await db.collectionGroup("chores")
-            .whereField("id", isEqualTo: id.uuidString)
-            .limit(to: 1)
-            .getDocuments()
-        guard let doc = snap.documents.first, let chore = Chore(fs: doc.data()) else {
-            throw RepositoryError.notFound
-        }
-        return (doc.reference, chore)
-    }
-
-    private func completionDoc(id: UUID) async throws -> (DocumentReference, ChoreCompletion) {
-        let snap = try await db.collectionGroup("choreCompletions")
-            .whereField("id", isEqualTo: id.uuidString)
-            .limit(to: 1)
-            .getDocuments()
-        guard let doc = snap.documents.first, let completion = ChoreCompletion(fs: doc.data()) else {
-            throw RepositoryError.notFound
-        }
-        return (doc.reference, completion)
-    }
 
     private func nextDate(from base: Date, cycle: ChoreCycle) -> Date {
         Calendar.current.date(byAdding: .day, value: cycle.approximateIntervalDays, to: base) ?? base

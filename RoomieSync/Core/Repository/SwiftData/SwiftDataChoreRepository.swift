@@ -18,6 +18,7 @@ public actor SwiftDataChoreRepository: ChoreRepositoryProtocol {
         title: String,
         icon: String,
         cycle: ChoreCycle,
+        weekdays: [Int],
         rotationMemberIDs: [UUID]
     ) async throws -> Chore {
         guard let first = rotationMemberIDs.first else {
@@ -37,9 +38,20 @@ public actor SwiftDataChoreRepository: ChoreRepositoryProtocol {
            let json = String(data: data, encoding: .utf8) {
             chore.rotationMemberIDsJSON = json
         }
+        if let data = try? JSONEncoder().encode(weekdays),
+           let json = String(data: data, encoding: .utf8) {
+            chore.weekdaysJSON = json
+        }
         modelContext.insert(chore)
         try saveOrThrow()
         return chore.toDomain()
+    }
+
+    public func updateChore(_ chore: Chore) async throws -> Chore {
+        let entity = try fetchChoreEntity(id: chore.id)
+        entity.apply(chore)
+        try saveOrThrow()
+        return entity.toDomain()
     }
 
     public func fetchChores(groupID: UUID) async throws -> [Chore] {

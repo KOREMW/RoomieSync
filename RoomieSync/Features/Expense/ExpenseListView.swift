@@ -87,36 +87,40 @@ struct ExpenseListView: View {
 
     @ViewBuilder
     private func monthTotalCard(_ vm: ExpenseViewModel) -> some View {
-        VStack(alignment: .leading, spacing: Spacing.s) {
-            HStack(alignment: .center) {
+        HStack(alignment: .center, spacing: Spacing.m) {
+            VStack(alignment: .leading, spacing: Spacing.s) {
                 Text("이번 달 총 지출")
                     .font(Typo.caption())
                     .foregroundStyle(.white.opacity(0.8))
-                Spacer()
-                Button {
-                    Task { await runSettlement(vm) }
-                } label: {
-                    HStack(spacing: 4) {
+                Text(CurrencyFormatter.format(vm.totalThisMonth))
+                    .font(Typo.amount(28))
+                    .foregroundStyle(.white)
+                HStack(spacing: 6) {
+                    Image(systemName: "person.2.fill")
+                    Text("\(vm.members.count)명이 함께 사용")
+                }
+                .font(Typo.caption())
+                .foregroundStyle(.white.opacity(0.85))
+            }
+            Spacer()
+            // 큰 원형 정산 버튼
+            Button {
+                Task { await runSettlement(vm) }
+            } label: {
+                VStack(spacing: 6) {
+                    ZStack {
+                        Circle().fill(.white)
                         Image(systemName: "checkmark.circle.fill")
-                        Text("정산하기")
+                            .font(.system(size: 30, weight: .semibold))
+                            .foregroundStyle(Tokens.primary)
                     }
-                    .font(.system(size: 13, weight: .semibold))
-                    .padding(.horizontal, Spacing.m)
-                    .padding(.vertical, 7)
-                    .background(.white)
-                    .foregroundStyle(Tokens.primary)
-                    .clipShape(Capsule())
+                    .frame(width: 60, height: 60)
+                    Text("정산")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(.white)
                 }
             }
-            Text(CurrencyFormatter.format(vm.totalThisMonth))
-                .font(Typo.amount(28))
-                .foregroundStyle(.white)
-            HStack(spacing: 6) {
-                Image(systemName: "person.2.fill")
-                Text("\(vm.members.count)명이 함께 사용")
-            }
-            .font(Typo.caption())
-            .foregroundStyle(.white.opacity(0.85))
+            .buttonStyle(.plain)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(Spacing.xl)

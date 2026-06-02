@@ -15,6 +15,7 @@ struct ChoreListView: View {
     @State private var viewModel: ChoreViewModel?
     @State private var showAddSheet: Bool = false
     @State private var pendingToast: UndoToastConfig? = nil
+    @State private var editingChore: Chore? = nil
 
     var body: some View {
         ScrollView {
@@ -43,6 +44,8 @@ struct ChoreListView: View {
                         ForEach(vm.filteredChores) { chore in
                             choreCard(chore, vm: vm)
                                 .padding(.horizontal, Spacing.l)
+                                .contentShape(Rectangle())
+                                .onTapGesture { editingChore = chore }
                         }
                     }
                 } else {
@@ -57,6 +60,11 @@ struct ChoreListView: View {
         .sheet(isPresented: $showAddSheet) {
             if let vm = viewModel {
                 ChoreAddSheet(viewModel: vm)
+            }
+        }
+        .sheet(item: $editingChore) { chore in
+            if let vm = viewModel {
+                ChoreAddSheet(viewModel: vm, editing: chore)
             }
         }
         .task {

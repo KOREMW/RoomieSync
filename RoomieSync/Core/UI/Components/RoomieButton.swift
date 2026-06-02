@@ -48,6 +48,7 @@ public struct RoomieButton: View {
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 14)
+            .padding(.horizontal, Spacing.xl)
             .background(background)
             .foregroundStyle(foreground)
             .clipShape(RoundedRectangle(cornerRadius: Radius.m))

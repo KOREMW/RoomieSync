@@ -24,6 +24,11 @@ struct MyPageView: View {
     @State private var nameSaved: Bool = false
     @State private var codeCopied: Bool = false
 
+    // 정산 계좌 (로컬 저장)
+    @AppStorage("settlementBankName") private var bankName: String = ""
+    @AppStorage("settlementAccountNumber") private var accountNumber: String = ""
+    @AppStorage("settlementAccountHolder") private var accountHolder: String = ""
+
     // 알림
     @State private var morningTime: Date = Self.defaultTime(hour: 9)
     @State private var eveningTime: Date = Self.defaultTime(hour: 21)
@@ -40,6 +45,7 @@ struct MyPageView: View {
             Section("내 프로필") {
                 HStack {
                     TextField("이름", text: $myName)
+                        .onChange(of: myName) { _, _ in nameSaved = false }
                     Button {
                         Task { await saveName() }
                     } label: {
@@ -50,6 +56,17 @@ struct MyPageView: View {
                               myName.trimmingCharacters(in: .whitespaces).isEmpty ||
                               isSavingName)
                 }
+            }
+
+            // MARK: 정산 계좌
+            Section("정산 계좌") {
+                TextField("은행 (예: 카카오뱅크)", text: $bankName)
+                TextField("계좌번호", text: $accountNumber)
+                    .keyboardType(.numbersAndPunctuation)
+                TextField("예금주", text: $accountHolder)
+                Text("룸메이트가 정산할 때 보낼 내 계좌입니다. 이 기기에 저장됩니다.")
+                    .font(Typo.caption())
+                    .foregroundStyle(Tokens.textSecondary)
             }
 
             // MARK: 초대 코드

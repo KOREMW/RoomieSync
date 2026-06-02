@@ -11,13 +11,18 @@ import Foundation
 
 public protocol ChoreRepositoryProtocol: Sendable {
     /// 가사 생성 — 초기 currentAssigneeID 는 rotationMemberIDs.first.
+    /// weekdays: 주간 주기일 때 반복할 요일(1=일 … 7=토). 비어있으면 매일/매월 기준.
     func createChore(
         groupID: UUID,
         title: String,
         icon: String,
         cycle: ChoreCycle,
+        weekdays: [Int],
         rotationMemberIDs: [UUID]
     ) async throws -> Chore
+
+    /// 가사 수정 — 제목·아이콘·주기·요일 변경 (마이페이지/가사 편집).
+    func updateChore(_ chore: Chore) async throws -> Chore
 
     /// 그룹 내 모든 가사.
     func fetchChores(groupID: UUID) async throws -> [Chore]

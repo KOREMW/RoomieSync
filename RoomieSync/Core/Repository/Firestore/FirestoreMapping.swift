@@ -34,6 +34,11 @@ enum FSMap {
     static func ids(_ ids: [UUID]) -> [String] { ids.map(\.uuidString) }
     static func epoch(_ d: Date) -> Double { d.timeIntervalSince1970 }
     static func dbl(_ d: Decimal) -> Double { NSDecimalNumber(decimal: d).doubleValue }
+    static func ints(_ v: Any?) -> [Int] {
+        if let arr = v as? [Int] { return arr }
+        if let arr = v as? [NSNumber] { return arr.map(\.intValue) }
+        return []
+    }
 }
 
 // MARK: - Group
@@ -93,7 +98,8 @@ extension Chore {
             "currentAssigneeID": currentAssigneeID.uuidString,
             "nextDueDate": FSMap.epoch(nextDueDate),
             "rotationStartedAt": FSMap.epoch(rotationStartedAt),
-            "rotationMemberIDs": FSMap.ids(rotationMemberIDs)
+            "rotationMemberIDs": FSMap.ids(rotationMemberIDs),
+            "weekdays": weekdays
         ]
     }
     init?(fs d: [String: Any]) {
@@ -108,7 +114,8 @@ extension Chore {
               let started = FSMap.date(d["rotationStartedAt"]) else { return nil }
         self.init(id: id, groupID: gid, title: title, icon: icon, cycleType: cycle,
                   currentAssigneeID: assignee, nextDueDate: due, rotationStartedAt: started,
-                  rotationMemberIDs: FSMap.uuids(d["rotationMemberIDs"]))
+                  rotationMemberIDs: FSMap.uuids(d["rotationMemberIDs"]),
+                  weekdays: FSMap.ints(d["weekdays"]))
     }
 }
 

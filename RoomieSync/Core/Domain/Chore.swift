@@ -49,6 +49,8 @@ public struct Chore: Identifiable, Hashable, Sendable, Codable {
     public var rotationStartedAt: Date
     /// 가사가 처음 만들어졌을 때의 멤버 순서 스냅샷. 회전은 이 순서를 따른다.
     public var rotationMemberIDs: [UUID]
+    /// 주간 주기일 때 반복 요일 (Calendar 기준 1=일 … 7=토). 매일/매월이면 빈 배열.
+    public var weekdays: [Int]
 
     public init(
         id: UUID = UUID(),
@@ -59,7 +61,8 @@ public struct Chore: Identifiable, Hashable, Sendable, Codable {
         currentAssigneeID: UUID,
         nextDueDate: Date,
         rotationStartedAt: Date = .now,
-        rotationMemberIDs: [UUID]
+        rotationMemberIDs: [UUID],
+        weekdays: [Int] = []
     ) {
         self.id = id
         self.groupID = groupID
@@ -70,5 +73,13 @@ public struct Chore: Identifiable, Hashable, Sendable, Codable {
         self.nextDueDate = nextDueDate
         self.rotationStartedAt = rotationStartedAt
         self.rotationMemberIDs = rotationMemberIDs
+        self.weekdays = weekdays
+    }
+
+    /// 주간 요일 한국어 요약 (예: "월·수·금"). 비어있으면 빈 문자열.
+    public var weekdaysSummary: String {
+        guard !weekdays.isEmpty else { return "" }
+        let labels = ["일", "월", "화", "수", "목", "금", "토"]
+        return weekdays.sorted().compactMap { (1...7).contains($0) ? labels[$0 - 1] : nil }.joined(separator: "·")
     }
 }

@@ -12,6 +12,8 @@ import SwiftUI
 struct HomeView: View {
 
     let groupID: UUID
+    /// '오늘 할 일' 카드를 누르면 가사 탭으로 이동시키는 콜백.
+    var onOpenChores: () -> Void = {}
     @Environment(\.repositories) private var repositories
     @State private var viewModel: HomeViewModel?
 
@@ -23,6 +25,8 @@ struct HomeView: View {
                     .padding(.top, Spacing.l)
                 if let vm = viewModel {
                     todayChoresCard(vm)
+                        .contentShape(Rectangle())
+                        .onTapGesture { onOpenChores() }
                     weeklySettlementCard(vm)
                     distributionCard(vm)
                 } else {

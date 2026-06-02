@@ -26,6 +26,7 @@ public actor InMemoryChoreRepository: ChoreRepositoryProtocol {
         title: String,
         icon: String,
         cycle: ChoreCycle,
+        weekdays: [Int],
         rotationMemberIDs: [UUID]
     ) async throws -> Chore {
         guard let first = rotationMemberIDs.first else {
@@ -38,8 +39,15 @@ public actor InMemoryChoreRepository: ChoreRepositoryProtocol {
             cycleType: cycle,
             currentAssigneeID: first,
             nextDueDate: nextDate(from: .now, cycle: cycle),
-            rotationMemberIDs: rotationMemberIDs
+            rotationMemberIDs: rotationMemberIDs,
+            weekdays: weekdays
         )
+        chores[chore.id] = chore
+        return chore
+    }
+
+    public func updateChore(_ chore: Chore) async throws -> Chore {
+        guard chores[chore.id] != nil else { throw RepositoryError.notFound }
         chores[chore.id] = chore
         return chore
     }

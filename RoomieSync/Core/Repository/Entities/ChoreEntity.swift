@@ -23,6 +23,8 @@ public final class ChoreEntity {
     /// 로테이션 순서 스냅샷 — [UUID] 를 JSON 인코딩 후 String 으로
     /// (SwiftData + CloudKit 환경에서 array 직접 저장은 일부 케이스에서 동기화 이슈 보고됨)
     public var rotationMemberIDsJSON: String = "[]"
+    /// 주간 반복 요일 — [Int] 를 JSON 인코딩 후 String 으로 (CloudKit 호환)
+    public var weekdaysJSON: String = "[]"
 
     @Relationship(deleteRule: .nullify)
     public var group: GroupEntity?
@@ -72,7 +74,12 @@ public extension ChoreEntity {
             currentAssigneeID: currentAssigneeID,
             nextDueDate: nextDueDate,
             rotationStartedAt: rotationStartedAt,
-            rotationMemberIDs: ids
+            rotationMemberIDs: ids,
+            weekdays: {
+                guard let data = weekdaysJSON.data(using: .utf8),
+                      let arr = try? JSONDecoder().decode([Int].self, from: data) else { return [] }
+                return arr
+            }()
         )
     }
 
@@ -86,6 +93,10 @@ public extension ChoreEntity {
         if let data = try? JSONEncoder().encode(domain.rotationMemberIDs),
            let json = String(data: data, encoding: .utf8) {
             self.rotationMemberIDsJSON = json
+        }
+        if let data = try? JSONEncoder().encode(domain.weekdays),
+           let json = String(data: data, encoding: .utf8) {
+            self.weekdaysJSON = json
         }
     }
 }

@@ -41,9 +41,9 @@ targets:
         excludes:
           - Widget/**
           - LiveActivity/**
-          - Resources/**
-      - path: RoomieSync/Resources
-        type: folder
+      # Resources 는 일반 그룹으로 포함해야 Asset Catalog 가 Assets.car 로 컴파일되고
+      # .lproj 가 번들 루트에 배치된다. (type: folder 로 두면 Resources/ 하위 폴더 참조가
+      # 되어 iOS 번들 구조가 깨지고 host CFBundle 이 bundle id 를 못 읽는다.)
     info:
       path: RoomieSync/Info.plist
       properties:

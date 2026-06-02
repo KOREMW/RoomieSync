@@ -74,7 +74,10 @@ public final class ChoreViewModel {
         }
     }
 
-    public func addChore(title: String, icon: String, cycle: ChoreCycle, weekdays: [Int]) async -> Bool {
+    public func addChore(
+        title: String, icon: String, cycle: ChoreCycle, weekdays: [Int],
+        notifyMorning: Bool = true, notifyEvening: Bool = true
+    ) async -> Bool {
         do {
             let chore = try await choreRepo.createChore(
                 groupID: groupID,
@@ -84,9 +87,23 @@ public final class ChoreViewModel {
                 weekdays: weekdays,
                 rotationMemberIDs: members.map(\.id)
             )
-            if let assignee = members.first(where: { $0.id == chore.currentAssigneeID }) {
-                await NotificationService.shared.scheduleMorningDuty(chore: chore, memberName: assignee.name)
-                await NotificationService.shared.scheduleEveningReminder(chore: chore, memberName: assignee.name)
+            applyChoreNotifications(chore: chore, morning: notifyMorning, evening: notifyEvening)
+            await load()
+            return true
+        } catch {
+            errorMessage = CKErrorMapper.userMessage(for: error)
+            return false
+        }
+    }
+
+    public func updateChore(
+        _ chore: Chore, notifyMorning: Bool? = nil, notifyEvening: Bool? = nil
+    ) async -> Bool {
+        do {
+            _ = try await choreRepo.updateChore(chore)
+            if let m = notifyMorning, let e = notifyEvening {
+                NotificationService.shared.cancelForChore(chore.id)
+                applyChoreNotifications(chore: chore, morning: m, evening: e)
             }
             await load()
             return true
@@ -96,14 +113,14 @@ public final class ChoreViewModel {
         }
     }
 
-    public func updateChore(_ chore: Chore) async -> Bool {
-        do {
-            _ = try await choreRepo.updateChore(chore)
-            await load()
-            return true
-        } catch {
-            errorMessage = CKErrorMapper.userMessage(for: error)
-            return false
+    /// 가사별 알림 토글 저장 + (켜진 경우) 스케줄링.
+    private func applyChoreNotifications(chore: Chore, morning: Bool, evening: Bool) {
+        NotificationService.shared.setChorePreference(.morningDuty, choreID: chore.id, enabled: morning)
+        NotificationService.shared.setChorePreference(.eveningReminder, choreID: chore.id, enabled: evening)
+        let assigneeName = members.first(where: { $0.id == chore.currentAssigneeID })?.name ?? ""
+        Task {
+            await NotificationService.shared.scheduleMorningDuty(chore: chore, memberName: assigneeName)
+            await NotificationService.shared.scheduleEveningReminder(chore: chore, memberName: assigneeName)
         }
     }
 

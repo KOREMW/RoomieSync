@@ -24,16 +24,20 @@ struct MyPageView: View {
     @State private var nameSaved: Bool = false
     @State private var codeCopied: Bool = false
 
-    // 정산 계좌 (로컬 저장)
+    // 정산 계좌 (로컬 저장) — 저장 버튼으로만 반영
     @AppStorage("settlementBankName") private var bankName: String = ""
     @AppStorage("settlementAccountNumber") private var accountNumber: String = ""
     @AppStorage("settlementAccountHolder") private var accountHolder: String = ""
+    @State private var draftBank: String = ""
+    @State private var draftAccount: String = ""
+    @State private var draftHolder: String = ""
+    @State private var accountSaved: Bool = false
 
-    // 알림
-    @State private var morningTime: Date = Self.defaultTime(hour: 9)
-    @State private var eveningTime: Date = Self.defaultTime(hour: 21)
-    @State private var morningOn: Bool = NotificationService.shared.userPrefers(.morningDuty)
-    @State private var eveningOn: Bool = NotificationService.shared.userPrefers(.eveningReminder)
+    // 그룹 나가기
+    @AppStorage(AppKeys.Storage.currentGroupID) private var currentGroupIDString: String = ""
+    @State private var showLeaveConfirm: Bool = false
+
+    // 알림 (당번 알림은 가사별로 이동 → 여기선 그룹 알림만)
     @State private var memberCompletionOn: Bool = NotificationService.shared.userPrefers(.memberCompletion)
     @State private var expenseAddedOn: Bool = NotificationService.shared.userPrefers(.expenseAdded)
     @State private var monthlyOn: Bool = NotificationService.shared.userPrefers(.monthlySettlement)
@@ -60,10 +64,27 @@ struct MyPageView: View {
 
             // MARK: 정산 계좌
             Section("정산 계좌") {
-                TextField("은행 (예: 카카오뱅크)", text: $bankName)
-                TextField("계좌번호", text: $accountNumber)
+                TextField("은행 (예: 카카오뱅크)", text: $draftBank)
+                    .onChange(of: draftBank) { _, _ in accountSaved = false }
+                TextField("계좌번호", text: $draftAccount)
                     .keyboardType(.numbersAndPunctuation)
-                TextField("예금주", text: $accountHolder)
+                    .onChange(of: draftAccount) { _, _ in accountSaved = false }
+                TextField("예금주", text: $draftHolder)
+                    .onChange(of: draftHolder) { _, _ in accountSaved = false }
+                Button {
+                    bankName = draftBank.trimmingCharacters(in: .whitespaces)
+                    accountNumber = draftAccount.trimmingCharacters(in: .whitespaces)
+                    accountHolder = draftHolder.trimmingCharacters(in: .whitespaces)
+                    accountSaved = true
+                    HapticManager.shared.success()
+                } label: {
+                    HStack {
+                        Spacer()
+                        Label(accountSaved ? "저장됨" : "계좌 저장", systemImage: accountSaved ? "checkmark" : "tray.and.arrow.down")
+                            .fontWeight(.semibold)
+                        Spacer()
+                    }
+                }
                 Text("룸메이트가 정산할 때 보낼 내 계좌입니다. 이 기기에 저장됩니다.")
                     .font(Typo.caption())
                     .foregroundStyle(Tokens.textSecondary)
@@ -106,22 +127,11 @@ struct MyPageView: View {
                 }
             }
 
-            Section("당번 알림") {
-                Toggle("오전 당번 알림", isOn: $morningOn)
-                    .onChange(of: morningOn) { _, v in
-                        NotificationService.shared.setPreference(.morningDuty, enabled: v)
-                    }
-                if morningOn {
-                    DatePicker("오전 알림 시각", selection: $morningTime, displayedComponents: .hourAndMinute)
-                }
-                Toggle("저녁 미완료 리마인드", isOn: $eveningOn)
-                    .onChange(of: eveningOn) { _, v in
-                        NotificationService.shared.setPreference(.eveningReminder, enabled: v)
-                    }
-                if eveningOn {
-                    DatePicker("저녁 리마인드 시각", selection: $eveningTime, displayedComponents: .hourAndMinute)
-                }
-            }
+            Section {
+                Text("당번 알림(오전/저녁)은 가사마다 따로 설정합니다. 가사 탭에서 가사를 추가/수정할 때 켜고 끌 수 있어요.")
+                    .font(Typo.caption())
+                    .foregroundStyle(Tokens.textSecondary)
+            } header: { Text("당번 알림") }
 
             Section("그룹 알림") {
                 Toggle("룸메이트가 완료했을 때", isOn: $memberCompletionOn)
@@ -138,6 +148,14 @@ struct MyPageView: View {
                     }
             }
 
+            Section("그룹") {
+                Button(role: .destructive) {
+                    showLeaveConfirm = true
+                } label: {
+                    Label("이 그룹에서 나가기", systemImage: "rectangle.portrait.and.arrow.right")
+                }
+            }
+
             Section("정보") {
                 LabeledContent("학번", value: "2091188")
                 LabeledContent("작성자", value: "엄민욱")
@@ -147,11 +165,29 @@ struct MyPageView: View {
         }
         .navigationTitle("마이페이지")
         .navigationBarTitleDisplayMode(.inline)
+        .confirmationDialog("이 그룹에서 나갈까요?", isPresented: $showLeaveConfirm, titleVisibility: .visible) {
+            Button("나가기", role: .destructive) { Task { await leaveGroup() } }
+            Button("취소", role: .cancel) {}
+        } message: {
+            Text("그룹에서 나가면 이 기기에서 그룹 화면을 떠나 시작 화면으로 돌아갑니다.")
+        }
         .task {
             let settings = await UNUserNotificationCenter.current().notificationSettings()
             permissionGranted = settings.authorizationStatus == .authorized
+            draftBank = bankName
+            draftAccount = accountNumber
+            draftHolder = accountHolder
             await loadProfile()
         }
+    }
+
+    @MainActor
+    private func leaveGroup() async {
+        if let id = myMemberID {
+            _ = try? await repositories.group.removeMember(id)
+        }
+        // 현재 그룹 해제 → RootView 가 그룹 시작 화면으로 전환
+        currentGroupIDString = ""
     }
 
     @MainActor
@@ -184,10 +220,6 @@ struct MyPageView: View {
         } catch {
             // 실패 시 저장 상태 미표시
         }
-    }
-
-    private static func defaultTime(hour: Int) -> Date {
-        Calendar.current.date(bySettingHour: hour, minute: 0, second: 0, of: .now) ?? .now
     }
 }
 

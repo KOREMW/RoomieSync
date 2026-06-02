@@ -66,7 +66,7 @@ public final class NotificationService: NSObject {
         hour: Int = 9,
         minute: Int = 0
     ) async {
-        guard userPrefers(.morningDuty) else { return }
+        guard userPrefersChore(.morningDuty, choreID: chore.id) else { return }
         let content = UNMutableNotificationContent()
         content.title = "오늘 \(chore.title) 당번이에요 \(chore.icon)"
         content.body = "\(memberName)님, 잊지 말고 챙겨주세요!"
@@ -94,7 +94,7 @@ public final class NotificationService: NSObject {
         memberName: String,
         hour: Int = 21
     ) async {
-        guard userPrefers(.eveningReminder) else { return }
+        guard userPrefersChore(.eveningReminder, choreID: chore.id) else { return }
         let content = UNMutableNotificationContent()
         content.title = "아직 \(chore.title) 안 하셨네요"
         content.body = "한 번 확인해보세요. \(memberName)님!"
@@ -250,6 +250,22 @@ public final class NotificationService: NSObject {
 
     public func setPreference(_ kind: NotificationKind, enabled: Bool) {
         UserDefaults.standard.set(enabled, forKey: kind.rawValue)
+    }
+
+    // MARK: - 가사별 알림 토글 (당번 알림을 가사마다 따로 설정)
+
+    private func choreKey(_ kind: NotificationKind, _ choreID: UUID) -> String {
+        "\(kind.rawValue).chore.\(choreID.uuidString)"
+    }
+
+    public func userPrefersChore(_ kind: NotificationKind, choreID: UUID) -> Bool {
+        let key = choreKey(kind, choreID)
+        if UserDefaults.standard.object(forKey: key) == nil { return kind.defaultValue }
+        return UserDefaults.standard.bool(forKey: key)
+    }
+
+    public func setChorePreference(_ kind: NotificationKind, choreID: UUID, enabled: Bool) {
+        UserDefaults.standard.set(enabled, forKey: choreKey(kind, choreID))
     }
 
     // MARK: - 카테고리/액션 (당번 알림 푸시에서 바로 "완료" 가능)

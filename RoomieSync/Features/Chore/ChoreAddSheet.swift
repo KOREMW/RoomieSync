@@ -18,6 +18,8 @@ struct ChoreAddSheet: View {
     @State private var selectedIcon: String = "🗑"
     @State private var cycle: ChoreCycle = .daily
     @State private var weekdays: Set<Int> = []          // 1=일 … 7=토
+    @State private var notifyMorning: Bool = true
+    @State private var notifyEvening: Bool = true
     @State private var isWorking: Bool = false
     @State private var didPrefill: Bool = false
     @State private var showDeleteConfirm: Bool = false
@@ -83,6 +85,11 @@ struct ChoreAddSheet: View {
                         .padding(.vertical, 4)
                     }
                 }
+                Section("이 가사 알림") {
+                    Toggle("오전 당번 알림", isOn: $notifyMorning)
+                    Toggle("저녁 미완료 리마인드", isOn: $notifyEvening)
+                }
+
                 Section {
                     Text("멤버 \(viewModel.members.count)명이 순서대로 자동 배정됩니다.")
                         .font(Typo.caption())
@@ -123,6 +130,8 @@ struct ChoreAddSheet: View {
                     selectedIcon = c.icon
                     cycle = c.cycleType
                     weekdays = Set(c.weekdays)
+                    notifyMorning = NotificationService.shared.userPrefersChore(.morningDuty, choreID: c.id)
+                    notifyEvening = NotificationService.shared.userPrefersChore(.eveningReminder, choreID: c.id)
                 }
             }
         }
@@ -143,13 +152,15 @@ struct ChoreAddSheet: View {
             updated.icon = selectedIcon
             updated.cycleType = cycle
             updated.weekdays = days
-            ok = await viewModel.updateChore(updated)
+            ok = await viewModel.updateChore(updated, notifyMorning: notifyMorning, notifyEvening: notifyEvening)
         } else {
             ok = await viewModel.addChore(
                 title: title.trimmingCharacters(in: .whitespaces),
                 icon: selectedIcon,
                 cycle: cycle,
-                weekdays: days
+                weekdays: days,
+                notifyMorning: notifyMorning,
+                notifyEvening: notifyEvening
             )
         }
         if ok { dismiss() }

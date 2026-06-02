@@ -22,6 +22,9 @@ public protocol GroupRepositoryProtocol: Sendable {
     /// 그룹에 멤버 추가 — 최대 6 명 (계획서 2 P0 ①).
     func addMember(toGroup groupID: UUID, name: String, avatarColorHex: String) async throws -> Member
 
+    /// 멤버 이름 변경 — 마이페이지에서 본인 이름 수정.
+    func updateMemberName(_ memberID: UUID, name: String) async throws -> Member
+
     /// 그룹 내 멤버 전체.
     func fetchMembers(ofGroup groupID: UUID) async throws -> [Member]
 

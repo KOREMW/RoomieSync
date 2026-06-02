@@ -25,6 +25,9 @@ struct MainTabView: View {
 
             NavigationStack { StatsView(groupID: groupID) }
                 .tabItem { Label("통계", systemImage: "chart.bar.fill") }
+
+            NavigationStack { MyPageView(groupID: groupID) }
+                .tabItem { Label("마이페이지", systemImage: "person.crop.circle.fill") }
         }
         .tint(Tokens.primary)
     }

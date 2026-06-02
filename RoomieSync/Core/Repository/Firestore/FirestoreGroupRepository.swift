@@ -58,6 +58,19 @@ public actor FirestoreGroupRepository: GroupRepositoryProtocol {
         return member
     }
 
+    public func updateMemberName(_ memberID: UUID, name: String) async throws -> Member {
+        let snap = try await db.collectionGroup("members")
+            .whereField("id", isEqualTo: memberID.uuidString)
+            .limit(to: 1)
+            .getDocuments()
+        guard let doc = snap.documents.first, var member = Member(fs: doc.data()) else {
+            throw RepositoryError.notFound
+        }
+        try await doc.reference.updateData(["name": name])
+        member.name = name
+        return member
+    }
+
     public func fetchMembers(ofGroup groupID: UUID) async throws -> [Member] {
         let snap = try await groups.document(groupID.uuidString).collection("members").getDocuments()
         return snap.documents.compactMap { Member(fs: $0.data()) }.sorted { $0.joinedAt < $1.joinedAt }

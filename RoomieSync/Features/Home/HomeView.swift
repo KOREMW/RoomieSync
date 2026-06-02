@@ -39,23 +39,6 @@ struct HomeView: View {
             await viewModel?.load()
         }
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                Text("RoomieSync")
-                    .font(Typo.bodyBold())
-                    .foregroundStyle(Tokens.textPrimary)
-            }
-            ToolbarItem(placement: .topBarTrailing) {
-                HStack(spacing: Spacing.m) {
-                    Image(systemName: "bell").foregroundStyle(Tokens.textSecondary)
-                    NavigationLink {
-                        SettingsView(groupID: groupID)
-                    } label: {
-                        Image(systemName: "gearshape").foregroundStyle(Tokens.textSecondary)
-                    }
-                }
-            }
-        }
     }
 
     @ViewBuilder

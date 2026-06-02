@@ -1,19 +1,30 @@
 //
-//  SettingsView.swift
+//  MyPageView.swift
 //  RoomieSync
 //
-//  계획서 참조: 4.2 푸시 알림 — 사용자별 토글 (피로도 방지)
+//  계획서 참조: 4.2 푸시 알림 사용자별 토글 + 프로필/초대 코드 관리.
 //  작성자: 엄민욱 (2091188)
 //  Created: 2026-06-02
+//
+//  하단 탭 "마이페이지" — 프로필(이름 수정)·초대 코드·알림 설정·그룹·정보.
 //
 
 import SwiftUI
 import UserNotifications
 
-struct SettingsView: View {
+struct MyPageView: View {
     let groupID: UUID
     @Environment(\.repositories) private var repositories
 
+    // 프로필 / 초대 코드
+    @State private var myMemberID: UUID? = nil
+    @State private var myName: String = ""
+    @State private var inviteCode: String = ""
+    @State private var isSavingName: Bool = false
+    @State private var nameSaved: Bool = false
+    @State private var codeCopied: Bool = false
+
+    // 알림
     @State private var morningTime: Date = Self.defaultTime(hour: 9)
     @State private var eveningTime: Date = Self.defaultTime(hour: 21)
     @State private var morningOn: Bool = NotificationService.shared.userPrefers(.morningDuty)
@@ -25,6 +36,43 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
+            // MARK: 프로필 (이름 수정)
+            Section("내 프로필") {
+                HStack {
+                    TextField("이름", text: $myName)
+                    Button {
+                        Task { await saveName() }
+                    } label: {
+                        if isSavingName { ProgressView() }
+                        else { Text(nameSaved ? "저장됨" : "저장").fontWeight(.semibold) }
+                    }
+                    .disabled(myMemberID == nil ||
+                              myName.trimmingCharacters(in: .whitespaces).isEmpty ||
+                              isSavingName)
+                }
+            }
+
+            // MARK: 초대 코드
+            Section("초대 코드") {
+                HStack {
+                    Text(inviteCode.isEmpty ? "—" : inviteCode)
+                        .font(.system(size: 22, weight: .bold, design: .monospaced))
+                        .foregroundStyle(Tokens.primary)
+                    Spacer()
+                    Button {
+                        UIPasteboard.general.string = inviteCode
+                        codeCopied = true
+                    } label: {
+                        Label(codeCopied ? "복사됨" : "복사", systemImage: codeCopied ? "checkmark" : "doc.on.doc")
+                    }
+                    .disabled(inviteCode.isEmpty)
+                }
+                Text("이 코드를 룸메이트에게 공유하면 같은 그룹에 참여할 수 있어요.")
+                    .font(Typo.caption())
+                    .foregroundStyle(Tokens.textSecondary)
+            }
+
+            // MARK: 알림
             Section("알림 권한") {
                 HStack {
                     Image(systemName: permissionGranted ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
@@ -73,12 +121,6 @@ struct SettingsView: View {
                     }
             }
 
-            Section("그룹") {
-                Button("이 그룹에서 나가기", role: .destructive) {
-                    // TODO: GroupRepo.removeMember + 정산 잔액 0 검증 + 그룹 nil 처리
-                }
-            }
-
             Section("정보") {
                 LabeledContent("학번", value: "2091188")
                 LabeledContent("작성자", value: "엄민욱")
@@ -86,11 +128,44 @@ struct SettingsView: View {
                 LabeledContent("라이선스", value: "MIT")
             }
         }
-        .navigationTitle("설정")
+        .navigationTitle("마이페이지")
         .navigationBarTitleDisplayMode(.inline)
         .task {
             let settings = await UNUserNotificationCenter.current().notificationSettings()
             permissionGranted = settings.authorizationStatus == .authorized
+            await loadProfile()
+        }
+    }
+
+    @MainActor
+    private func loadProfile() async {
+        do {
+            let group = try await repositories.group.fetchGroup(id: groupID)
+            inviteCode = group.inviteCode
+            let members = try await repositories.group.fetchMembers(ofGroup: groupID)
+            if let me = members.first {
+                myMemberID = me.id
+                myName = me.name
+            }
+        } catch {
+            // 프로필 로드 실패는 조용히 무시(마이페이지의 알림 설정은 계속 사용 가능)
+        }
+    }
+
+    @MainActor
+    private func saveName() async {
+        guard let id = myMemberID else { return }
+        let trimmed = myName.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return }
+        isSavingName = true
+        defer { isSavingName = false }
+        do {
+            _ = try await repositories.group.updateMemberName(id, name: trimmed)
+            myName = trimmed
+            nameSaved = true
+            HapticManager.shared.success()
+        } catch {
+            // 실패 시 저장 상태 미표시
         }
     }
 
@@ -100,6 +175,6 @@ struct SettingsView: View {
 }
 
 #Preview {
-    NavigationStack { SettingsView(groupID: UUID()) }
+    NavigationStack { MyPageView(groupID: UUID()) }
         .environment(\.repositories, .preview())
 }

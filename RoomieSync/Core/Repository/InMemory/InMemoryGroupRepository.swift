@@ -61,6 +61,13 @@ public actor InMemoryGroupRepository: GroupRepositoryProtocol {
         return member
     }
 
+    public func updateMemberName(_ memberID: UUID, name: String) async throws -> Member {
+        guard var member = members[memberID] else { throw RepositoryError.notFound }
+        member.name = name
+        members[memberID] = member
+        return member
+    }
+
     public func fetchMembers(ofGroup groupID: UUID) async throws -> [Member] {
         guard let group = groups[groupID] else { throw RepositoryError.notFound }
         return group.memberIDs.compactMap { members[$0] }

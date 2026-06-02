@@ -21,7 +21,8 @@ struct RootView: View {
     @AppStorage(AppKeys.Storage.currentGroupID) private var currentGroupIDString: String = ""
 
     var body: some View {
-        Group {
+        // 도메인 모델 Group 과 이름이 겹치므로 SwiftUI.Group 으로 명시.
+        SwiftUI.Group {
             if !didCompleteOnboarding {
                 OnboardingView(onFinish: { didCompleteOnboarding = true })
             } else if currentGroupIDString.isEmpty {

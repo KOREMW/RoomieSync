@@ -79,3 +79,6 @@ TODO.local.md
 
 ## Git workflow 스크립트 임시 디렉토리
 .refactor_snapshot/
+
+## Firebase (민감 — 각자 발급)
+GoogleService-Info.plist

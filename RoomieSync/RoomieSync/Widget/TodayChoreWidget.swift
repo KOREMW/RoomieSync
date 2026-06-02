@@ -173,12 +173,8 @@ struct LockScreenView: View {
     }
 }
 
-// MARK: - 메인 앱에서 위젯 갱신 요청용 헬퍼
-public enum WidgetReloader {
-    public static func reloadAll() {
-        WidgetCenter.shared.reloadAllTimelines()
-    }
-}
+// WidgetReloader 는 Core/Shared/WidgetReloader.swift 로 이동
+// (메인 앱에서 위젯 갱신을 요청하므로 양쪽 타깃에서 공유)
 
 #Preview(as: .systemSmall) {
     TodayChoreWidget()

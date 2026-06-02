@@ -13,29 +13,8 @@ import ActivityKit
 import WidgetKit
 import SwiftUI
 
-public struct ChoreInProgressAttributes: ActivityAttributes, Sendable {
-    public struct ContentState: Codable, Hashable, Sendable {
-        public var elapsedSeconds: Int
-        public var memberInitials: String
-        public init(elapsedSeconds: Int = 0, memberInitials: String) {
-            self.elapsedSeconds = elapsedSeconds
-            self.memberInitials = memberInitials
-        }
-    }
-
-    public var choreTitle: String
-    public var choreIcon: String
-    public var memberName: String
-    public var startedAt: Date
-
-    public init(choreTitle: String, choreIcon: String,
-                memberName: String, startedAt: Date = .now) {
-        self.choreTitle = choreTitle
-        self.choreIcon = choreIcon
-        self.memberName = memberName
-        self.startedAt = startedAt
-    }
-}
+// ChoreInProgressAttributes 정의는 Core/Shared/LiveActivityAttributes.swift 로 이동
+// (메인 앱 + 위젯 확장 양쪽에서 공유)
 
 struct ChoreInProgressLiveActivity: Widget {
     var body: some WidgetConfiguration {

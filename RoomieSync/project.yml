@@ -65,6 +65,15 @@ targets:
             CFBundleURLName: com.roomiesync.app
     entitlements:
       path: RoomieSync/RoomieSync.entitlements
+      properties:
+        com.apple.developer.icloud-container-identifiers:
+          - iCloud.com.roomiesync.app
+        com.apple.developer.icloud-services:
+          - CloudKit
+        com.apple.developer.ubiquity-kvstore-identifier: $(TeamIdentifierPrefix)com.roomiesync.app
+        aps-environment: development
+        com.apple.security.application-groups:
+          - group.com.roomiesync.shared
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.roomiesync.app
@@ -97,6 +106,9 @@ targets:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
     entitlements:
       path: RoomieSync/Widget/RoomieSyncWidgets.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.roomiesync.shared
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.roomiesync.app.widgets

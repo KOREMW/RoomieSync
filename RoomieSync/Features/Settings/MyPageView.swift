@@ -31,6 +31,14 @@ struct MyPageView: View {
     @State private var isSavingAccount: Bool = false
     @State private var revealAccount: Bool = false
 
+    /// 정산 계좌 은행 선택 목록.
+    private static let banks: [String] = [
+        "카카오뱅크", "토스뱅크", "케이뱅크",
+        "국민", "신한", "우리", "하나", "농협", "기업", "SC제일", "씨티",
+        "부산", "대구", "경남", "광주", "전북", "제주",
+        "새마을금고", "신협", "우체국", "산업", "수협"
+    ]
+
     // 그룹 나가기
     @AppStorage(AppKeys.Storage.currentGroupID) private var currentGroupIDString: String = ""
     @State private var showLeaveConfirm: Bool = false
@@ -62,8 +70,13 @@ struct MyPageView: View {
 
             // MARK: 정산 계좌
             Section("정산 계좌") {
-                TextField("은행 (예: 카카오뱅크)", text: $draftBank)
-                    .onChange(of: draftBank) { _, _ in accountSaved = false }
+                Picker("은행", selection: $draftBank) {
+                    Text("은행 선택").tag("")
+                    ForEach(Self.banks, id: \.self) { bank in
+                        Text(bank).tag(bank)
+                    }
+                }
+                .onChange(of: draftBank) { _, _ in accountSaved = false }
                 HStack {
                     SwiftUI.Group {
                         if revealAccount {
@@ -100,7 +113,8 @@ struct MyPageView: View {
                         Spacer()
                     }
                 }
-                .disabled(myMemberID == nil || isSavingAccount)
+                .disabled(myMemberID == nil || isSavingAccount ||
+                          draftBank.isEmpty || draftAccount.trimmingCharacters(in: .whitespaces).isEmpty)
                 .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }   // 구분선 전체 너비로
                 Text("예금주는 내 이름(\(myName))으로 표시됩니다. 룸메이트가 정산할 때 이 계좌로 송금합니다.")
                     .font(Typo.caption())

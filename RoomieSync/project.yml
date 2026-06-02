@@ -30,6 +30,12 @@ settings:
     DEVELOPMENT_TEAM: ''
     ENABLE_USER_SCRIPT_SANDBOXING: YES
 
+# ===== Swift Package 의존성 =====
+packages:
+  Firebase:
+    url: https://github.com/firebase/firebase-ios-sdk.git
+    from: "11.0.0"
+
 targets:
   # ===== 메인 앱 =====
   RoomieSync:
@@ -87,6 +93,8 @@ targets:
     dependencies:
       - target: RoomieSyncWidgets
         embed: true
+      - package: Firebase
+        product: FirebaseFirestore
 
   # ===== Widget Extension (위젯 + Live Activity 통합) =====
   RoomieSyncWidgets:

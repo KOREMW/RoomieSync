@@ -56,6 +56,8 @@ targets:
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         NSUserTrackingUsageDescription: 사용자 활동을 추적하지 않습니다.
+        NSSupportsLiveActivities: true
+        NSSupportsLiveActivitiesFrequentUpdates: true
         UIBackgroundModes:
           - remote-notification
           - fetch
@@ -104,6 +106,8 @@ targets:
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
+        NSSupportsLiveActivities: true
+        NSSupportsLiveActivitiesFrequentUpdates: true
     entitlements:
       path: RoomieSync/Widget/RoomieSyncWidgets.entitlements
       properties:

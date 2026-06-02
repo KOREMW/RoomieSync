@@ -18,6 +18,8 @@ struct RoomieSyncApp: App {
     let container: ModelContainer
 
     init() {
+        // GoogleService-Info.plist 가 있으면 Firebase 구성 → Firestore 백엔드 사용.
+        FirebaseBootstrap.configureIfAvailable()
         do {
             self.container = try ModelContainerFactory.makePersistent(inMemoryOnly: false)
         } catch {
@@ -31,8 +33,16 @@ struct RoomieSyncApp: App {
     var body: some Scene {
         WindowGroup {
             RootView()
-                .environment(\.repositories, .live(container: container))
+                .environment(\.repositories, backendBundle())
         }
         .modelContainer(container)
+    }
+
+    /// 백엔드 선택: Firebase 구성 시 Firestore, 아니면 기존 SwiftData(+CloudKit)/로컬.
+    private func backendBundle() -> RepositoryBundle {
+        #if canImport(FirebaseFirestore)
+        if FirebaseBootstrap.isConfigured { return .firestore() }
+        #endif
+        return .live(container: container)
     }
 }

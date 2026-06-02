@@ -52,6 +52,18 @@ public struct RepositoryBundle: Sendable {
             device:  FixedDeviceIdentifierProvider("preview")
         )
     }
+
+    #if canImport(FirebaseFirestore)
+    /// CloudKit 대안 — Cloud Firestore 백엔드 (FirebaseBootstrap.isConfigured 일 때 사용).
+    public static func firestore() -> RepositoryBundle {
+        RepositoryBundle(
+            group:   FirestoreGroupRepository(),
+            chore:   FirestoreChoreRepository(),
+            expense: FirestoreExpenseRepository(),
+            device:  DeviceIdentifierProvider()
+        )
+    }
+    #endif
 }
 
 public extension EnvironmentValues {

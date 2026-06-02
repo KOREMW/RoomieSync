@@ -11,18 +11,8 @@ import ActivityKit
 import WidgetKit
 import SwiftUI
 
-public struct SettlementCountdownAttributes: ActivityAttributes, Sendable {
-    public struct ContentState: Codable, Hashable, Sendable {
-        public var daysRemaining: Int
-        public var receiveAmountKRW: Int
-        public init(daysRemaining: Int, receiveAmountKRW: Int) {
-            self.daysRemaining = daysRemaining
-            self.receiveAmountKRW = receiveAmountKRW
-        }
-    }
-    public var groupName: String
-    public init(groupName: String) { self.groupName = groupName }
-}
+// SettlementCountdownAttributes 정의는 Core/Shared/LiveActivityAttributes.swift 로 이동
+// (메인 앱 + 위젯 확장 양쪽에서 공유)
 
 struct SettlementCountdownLiveActivity: Widget {
     var body: some WidgetConfiguration {

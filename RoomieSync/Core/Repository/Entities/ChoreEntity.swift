@@ -25,6 +25,8 @@ public final class ChoreEntity {
     public var rotationMemberIDsJSON: String = "[]"
     /// 주간 반복 요일 — [Int] 를 JSON 인코딩 후 String 으로 (CloudKit 호환)
     public var weekdaysJSON: String = "[]"
+    /// 선택(once)/매월(monthly) 기준 날짜.
+    public var anchorDate: Date? = nil
 
     @Relationship(deleteRule: .nullify)
     public var group: GroupEntity?
@@ -79,7 +81,8 @@ public extension ChoreEntity {
                 guard let data = weekdaysJSON.data(using: .utf8),
                       let arr = try? JSONDecoder().decode([Int].self, from: data) else { return [] }
                 return arr
-            }()
+            }(),
+            anchorDate: anchorDate
         )
     }
 
@@ -98,5 +101,6 @@ public extension ChoreEntity {
            let json = String(data: data, encoding: .utf8) {
             self.weekdaysJSON = json
         }
+        self.anchorDate = domain.anchorDate
     }
 }

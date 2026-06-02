@@ -32,6 +32,7 @@ struct MyPageView: View {
     @State private var draftAccount: String = ""
     @State private var draftHolder: String = ""
     @State private var accountSaved: Bool = false
+    @State private var revealAccount: Bool = false
 
     // 그룹 나가기
     @AppStorage(AppKeys.Storage.currentGroupID) private var currentGroupIDString: String = ""
@@ -66,9 +67,29 @@ struct MyPageView: View {
             Section("정산 계좌") {
                 TextField("은행 (예: 카카오뱅크)", text: $draftBank)
                     .onChange(of: draftBank) { _, _ in accountSaved = false }
-                TextField("계좌번호", text: $draftAccount)
-                    .keyboardType(.numbersAndPunctuation)
-                    .onChange(of: draftAccount) { _, _ in accountSaved = false }
+                HStack {
+                    SwiftUI.Group {
+                        if revealAccount {
+                            TextField("계좌번호 (숫자만)", text: $draftAccount)
+                        } else {
+                            SecureField("계좌번호 (숫자만)", text: $draftAccount)
+                        }
+                    }
+                    .keyboardType(.numberPad)
+                    .onChange(of: draftAccount) { _, newValue in
+                        // 숫자만 허용
+                        let digits = newValue.filter(\.isNumber)
+                        if digits != newValue { draftAccount = digits }
+                        accountSaved = false
+                    }
+                    Button {
+                        revealAccount.toggle()
+                    } label: {
+                        Image(systemName: revealAccount ? "eye.slash" : "eye")
+                            .foregroundStyle(Tokens.textSecondary)
+                    }
+                    .buttonStyle(.borderless)
+                }
                 TextField("예금주", text: $draftHolder)
                     .onChange(of: draftHolder) { _, _ in accountSaved = false }
                 Button {
@@ -76,6 +97,7 @@ struct MyPageView: View {
                     accountNumber = draftAccount.trimmingCharacters(in: .whitespaces)
                     accountHolder = draftHolder.trimmingCharacters(in: .whitespaces)
                     accountSaved = true
+                    revealAccount = false
                     HapticManager.shared.success()
                 } label: {
                     HStack {
@@ -85,7 +107,8 @@ struct MyPageView: View {
                         Spacer()
                     }
                 }
-                Text("룸메이트가 정산할 때 보낼 내 계좌입니다. 이 기기에 저장됩니다.")
+                .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }   // 구분선 전체 너비로
+                Text("룸메이트가 정산할 때 보낼 내 계좌입니다. 계좌번호는 숨겨지며 '눈' 버튼으로 확인하세요.")
                     .font(Typo.caption())
                     .foregroundStyle(Tokens.textSecondary)
             }

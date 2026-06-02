@@ -36,7 +36,7 @@ struct ChoreListView: View {
                             icon: "checkmark.square",
                             title: "아직 가사가 없어요",
                             message: "쓰레기·설거지·청소 같은 가사를 추가하면\n자동으로 멤버 순서대로 배정돼요.",
-                            actionTitle: "+ 가사 추가",
+                            actionTitle: "가사 추가",
                             action: { showAddSheet = true }
                         )
                         .frame(minHeight: 400)
@@ -81,7 +81,7 @@ struct ChoreListView: View {
         }
         .overlay(alignment: .bottomTrailing) {
             if let vm = viewModel, !vm.filteredChores.isEmpty {
-                RoomieButton("새 가사", icon: "plus") {
+                RoomieButton("가사 추가", icon: "plus") {
                     showAddSheet = true
                 }
                 .fixedSize()

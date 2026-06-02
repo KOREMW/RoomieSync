@@ -9,28 +9,30 @@
 
 import Foundation
 
-/// 가사 주기. 시안 ②의 칩 ("매일", "주1회", "월1회") 와 1:1 매핑.
+/// 가사 주기.
 public enum ChoreCycle: String, Hashable, Sendable, Codable, CaseIterable {
     case daily              // 매일
-    case weekly             // 주 1 회
-    case monthly            // 월 1 회
+    case weekly             // 매주 (요일 지정)
+    case monthly            // 매월 (날짜 지정)
+    case once               // 선택 (특정 날짜 1회, 비주기)
 
     /// 사용자 노출 한국어 라벨
     public var displayName: String {
         switch self {
         case .daily:   return "매일"
-        case .weekly:  return "주 1회"
-        case .monthly: return "월 1회"
+        case .weekly:  return "매주"
+        case .monthly: return "매 월"
+        case .once:    return "선택"
         }
     }
 
-    /// 다음 차례 계산용 인터벌 (일 단위).
-    /// monthly 는 정확히 30 일로 근사 — 정확한 캘린더 산수는 RotateChore use-case 에서 별도 처리.
+    /// 다음 차례 계산용 인터벌 (일 단위 근사).
     public var approximateIntervalDays: Int {
         switch self {
         case .daily:   return 1
         case .weekly:  return 7
         case .monthly: return 30
+        case .once:    return 0
         }
     }
 }
@@ -49,8 +51,10 @@ public struct Chore: Identifiable, Hashable, Sendable, Codable {
     public var rotationStartedAt: Date
     /// 가사가 처음 만들어졌을 때의 멤버 순서 스냅샷. 회전은 이 순서를 따른다.
     public var rotationMemberIDs: [UUID]
-    /// 주간 주기일 때 반복 요일 (Calendar 기준 1=일 … 7=토). 매일/매월이면 빈 배열.
+    /// 주간 주기일 때 반복 요일 (Calendar 기준 1=일 … 7=토). 매일/매월/선택이면 빈 배열.
     public var weekdays: [Int]
+    /// 선택(once): 1회 진행 날짜. 매 월(monthly): 매월 반복할 기준 날짜(일자 사용). 그 외 nil.
+    public var anchorDate: Date?
 
     public init(
         id: UUID = UUID(),
@@ -62,7 +66,8 @@ public struct Chore: Identifiable, Hashable, Sendable, Codable {
         nextDueDate: Date,
         rotationStartedAt: Date = .now,
         rotationMemberIDs: [UUID],
-        weekdays: [Int] = []
+        weekdays: [Int] = [],
+        anchorDate: Date? = nil
     ) {
         self.id = id
         self.groupID = groupID
@@ -74,6 +79,7 @@ public struct Chore: Identifiable, Hashable, Sendable, Codable {
         self.rotationStartedAt = rotationStartedAt
         self.rotationMemberIDs = rotationMemberIDs
         self.weekdays = weekdays
+        self.anchorDate = anchorDate
     }
 
     /// 주간 요일 한국어 요약 (예: "월·수·금"). 비어있으면 빈 문자열.

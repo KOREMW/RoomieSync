@@ -18,6 +18,7 @@ public protocol ChoreRepositoryProtocol: Sendable {
         icon: String,
         cycle: ChoreCycle,
         weekdays: [Int],
+        anchorDate: Date?,
         rotationMemberIDs: [UUID]
     ) async throws -> Chore
 

@@ -2,7 +2,7 @@
 //  ChoreAddSheet.swift
 //  RoomieSync
 //
-//  계획서 참조: 6.1 #3 가사 세팅 — 추가/수정 + 주기(매일·요일 지정).
+//  가사 추가/수정 — 주기(매일·매주·매 월·선택) + 가사별 알림(시각 지정).
 //  작성자: 엄민욱 (2091188)
 //
 
@@ -18,8 +18,11 @@ struct ChoreAddSheet: View {
     @State private var selectedIcon: String = "🗑"
     @State private var cycle: ChoreCycle = .daily
     @State private var weekdays: Set<Int> = []          // 1=일 … 7=토
+    @State private var pickedDate: Date = .now          // 매 월 / 선택용 캘린더 날짜
     @State private var notifyMorning: Bool = true
     @State private var notifyEvening: Bool = true
+    @State private var morningTime: Date = Self.time(9, 0)
+    @State private var eveningTime: Date = Self.time(21, 0)
     @State private var isWorking: Bool = false
     @State private var didPrefill: Bool = false
     @State private var showDeleteConfirm: Bool = false
@@ -55,41 +58,23 @@ struct ChoreAddSheet: View {
                     }
                     .pickerStyle(.segmented)
 
-                    if cycle == .weekly {
-                        VStack(alignment: .leading, spacing: Spacing.s) {
-                            Text("반복 요일")
-                                .font(Typo.caption())
-                                .foregroundStyle(Tokens.textSecondary)
-                            HStack(spacing: 6) {
-                                ForEach(1...7, id: \.self) { day in
-                                    let on = weekdays.contains(day)
-                                    Button {
-                                        if on { weekdays.remove(day) } else { weekdays.insert(day) }
-                                    } label: {
-                                        Text(weekdayLabels[day - 1])
-                                            .font(.system(size: 14, weight: .semibold))
-                                            .frame(width: 36, height: 36)
-                                            .background(on ? Tokens.primary : Tokens.surfaceMuted)
-                                            .foregroundStyle(on ? .white : Tokens.textSecondary)
-                                            .clipShape(Circle())
-                                    }
-                                    .buttonStyle(.plain)
-                                }
-                            }
-                            if !weekdays.isEmpty {
-                                Text("주 \(weekdays.count)회 — \(selectedWeekdaysSummary)")
-                                    .font(Typo.caption())
-                                    .foregroundStyle(Tokens.primary)
-                            }
-                        }
-                        .padding(.vertical, 4)
+                    switch cycle {
+                    case .weekly:    weekdayPicker
+                    case .monthly:   calendarPicker(caption: "매월 이 날짜에 반복돼요")
+                    case .once:      calendarPicker(caption: "이 날짜에 1회만 진행돼요")
+                    case .daily:     EmptyView()
                     }
                 }
                 Section("이 가사 알림") {
                     Toggle("오전 당번 알림", isOn: $notifyMorning)
-                    Toggle("저녁 미완료 리마인드", isOn: $notifyEvening)
+                    if notifyMorning {
+                        DatePicker("오전 알림 시각", selection: $morningTime, displayedComponents: .hourAndMinute)
+                    }
+                    Toggle("저녁 미완료 알림", isOn: $notifyEvening)
+                    if notifyEvening {
+                        DatePicker("저녁 알림 시각", selection: $eveningTime, displayedComponents: .hourAndMinute)
+                    }
                 }
-
                 Section {
                     Text("멤버 \(viewModel.members.count)명이 순서대로 자동 배정됩니다.")
                         .font(Typo.caption())
@@ -98,21 +83,17 @@ struct ChoreAddSheet: View {
 
                 if isEditing {
                     Section {
-                        Button(role: .destructive) {
-                            showDeleteConfirm = true
-                        } label: {
+                        Button(role: .destructive) { showDeleteConfirm = true } label: {
                             HStack { Spacer(); Label("이 가사 삭제", systemImage: "trash"); Spacer() }
                         }
                         .disabled(isWorking)
                     }
                 }
             }
-            .navigationTitle(isEditing ? "가사 수정" : "새 가사")
+            .navigationTitle(isEditing ? "가사 수정" : "가사 추가")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("취소") { dismiss() }
-                }
+                ToolbarItem(placement: .cancellationAction) { Button("취소") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(isEditing ? "수정" : "추가") { Task { await save() } }
                         .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty || isWorking)
@@ -122,23 +103,62 @@ struct ChoreAddSheet: View {
                 Button("삭제", role: .destructive) { Task { await deleteChore() } }
                 Button("취소", role: .cancel) {}
             }
-            .task {
-                guard !didPrefill else { return }
-                didPrefill = true
-                if let c = editing {
-                    title = c.title
-                    selectedIcon = c.icon
-                    cycle = c.cycleType
-                    weekdays = Set(c.weekdays)
-                    notifyMorning = NotificationService.shared.userPrefersChore(.morningDuty, choreID: c.id)
-                    notifyEvening = NotificationService.shared.userPrefersChore(.eveningReminder, choreID: c.id)
-                }
-            }
+            .task { prefillIfNeeded() }
         }
     }
 
-    private var selectedWeekdaysSummary: String {
-        weekdays.sorted().map { weekdayLabels[$0 - 1] }.joined(separator: "·")
+    // MARK: - 요일 선택 (컨테이너 꽉 차게 균등 배치)
+
+    private var weekdayPicker: some View {
+        VStack(alignment: .leading, spacing: Spacing.s) {
+            Text("반복 요일").font(Typo.caption()).foregroundStyle(Tokens.textSecondary)
+            HStack(spacing: 6) {
+                ForEach(1...7, id: \.self) { day in
+                    let on = weekdays.contains(day)
+                    Text(weekdayLabels[day - 1])
+                        .font(.system(size: 14, weight: .semibold))
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 40)
+                        .background(on ? Tokens.primary : Tokens.surfaceMuted)
+                        .foregroundStyle(on ? .white : Tokens.textSecondary)
+                        .clipShape(RoundedRectangle(cornerRadius: Radius.s))
+                        .contentShape(Rectangle())
+                        .onTapGesture { if on { weekdays.remove(day) } else { weekdays.insert(day) } }
+                }
+            }
+            if !weekdays.isEmpty {
+                Text("주 \(weekdays.count)회 — \(weekdays.sorted().map { weekdayLabels[$0 - 1] }.joined(separator: "·"))")
+                    .font(Typo.caption()).foregroundStyle(Tokens.primary)
+            }
+        }
+        .padding(.vertical, 4)
+    }
+
+    private func calendarPicker(caption: String) -> some View {
+        VStack(alignment: .leading, spacing: Spacing.s) {
+            DatePicker("날짜", selection: $pickedDate, displayedComponents: .date)
+                .datePickerStyle(.graphical)
+                .environment(\.locale, Locale(identifier: "ko_KR"))
+            Text(caption).font(Typo.caption()).foregroundStyle(Tokens.textSecondary)
+        }
+    }
+
+    // MARK: - 로직
+
+    private func prefillIfNeeded() {
+        guard !didPrefill else { return }
+        didPrefill = true
+        guard let c = editing else { return }
+        title = c.title
+        selectedIcon = c.icon
+        cycle = c.cycleType
+        weekdays = Set(c.weekdays)
+        if let a = c.anchorDate { pickedDate = a }
+        let ns = NotificationService.shared
+        notifyMorning = ns.userPrefersChore(.morningDuty, choreID: c.id)
+        notifyEvening = ns.userPrefersChore(.eveningReminder, choreID: c.id)
+        morningTime = Self.dateFromMinutes(ns.choreTimeMinutes(.morningDuty, choreID: c.id))
+        eveningTime = Self.dateFromMinutes(ns.choreTimeMinutes(.eveningReminder, choreID: c.id))
     }
 
     @MainActor
@@ -146,21 +166,24 @@ struct ChoreAddSheet: View {
         isWorking = true
         defer { isWorking = false }
         let days = cycle == .weekly ? Array(weekdays).sorted() : []
+        let anchor: Date? = (cycle == .monthly || cycle == .once) ? pickedDate : nil
+        let mMin = Self.minutes(from: morningTime)
+        let eMin = Self.minutes(from: eveningTime)
         let ok: Bool
         if var updated = editing {
             updated.title = title.trimmingCharacters(in: .whitespaces)
             updated.icon = selectedIcon
             updated.cycleType = cycle
             updated.weekdays = days
-            ok = await viewModel.updateChore(updated, notifyMorning: notifyMorning, notifyEvening: notifyEvening)
+            updated.anchorDate = anchor
+            ok = await viewModel.updateChore(updated, notifyMorning: notifyMorning, notifyEvening: notifyEvening,
+                                             morningMinutes: mMin, eveningMinutes: eMin)
         } else {
             ok = await viewModel.addChore(
                 title: title.trimmingCharacters(in: .whitespaces),
-                icon: selectedIcon,
-                cycle: cycle,
-                weekdays: days,
-                notifyMorning: notifyMorning,
-                notifyEvening: notifyEvening
+                icon: selectedIcon, cycle: cycle, weekdays: days, anchorDate: anchor,
+                notifyMorning: notifyMorning, notifyEvening: notifyEvening,
+                morningMinutes: mMin, eveningMinutes: eMin
             )
         }
         if ok { dismiss() }
@@ -173,10 +196,20 @@ struct ChoreAddSheet: View {
         defer { isWorking = false }
         if await viewModel.deleteChore(id) { dismiss() }
     }
+
+    // MARK: - 시간 헬퍼
+    private static func time(_ h: Int, _ m: Int) -> Date {
+        Calendar.current.date(bySettingHour: h, minute: m, second: 0, of: .now) ?? .now
+    }
+    private static func minutes(from date: Date) -> Int {
+        let c = Calendar.current.dateComponents([.hour, .minute], from: date)
+        return (c.hour ?? 0) * 60 + (c.minute ?? 0)
+    }
+    private static func dateFromMinutes(_ minutes: Int) -> Date {
+        time(minutes / 60, minutes % 60)
+    }
 }
 
 #Preview {
-    ChoreAddSheet(
-        viewModel: ChoreViewModel(groupID: UUID(), repositories: .preview())
-    )
+    ChoreAddSheet(viewModel: ChoreViewModel(groupID: UUID(), repositories: .preview()))
 }

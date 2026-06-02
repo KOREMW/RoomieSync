@@ -19,6 +19,7 @@ public actor SwiftDataChoreRepository: ChoreRepositoryProtocol {
         icon: String,
         cycle: ChoreCycle,
         weekdays: [Int],
+        anchorDate: Date?,
         rotationMemberIDs: [UUID]
     ) async throws -> Chore {
         guard let first = rotationMemberIDs.first else {
@@ -26,14 +27,16 @@ public actor SwiftDataChoreRepository: ChoreRepositoryProtocol {
         }
         let group = try fetchGroupEntity(id: groupID)
 
+        let due = (cycle == .once || cycle == .monthly) ? (anchorDate ?? .now) : nextDate(from: .now, cycle: cycle)
         let chore = ChoreEntity(
             title: title,
             icon: icon,
             cycleTypeRaw: cycle.rawValue,
             currentAssigneeID: first,
-            nextDueDate: nextDate(from: .now, cycle: cycle)
+            nextDueDate: due
         )
         chore.group = group
+        chore.anchorDate = anchorDate
         if let data = try? JSONEncoder().encode(rotationMemberIDs),
            let json = String(data: data, encoding: .utf8) {
             chore.rotationMemberIDsJSON = json

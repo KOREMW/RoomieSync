@@ -92,7 +92,8 @@ public final class NotificationService: NSObject {
     public func scheduleEveningReminder(
         chore: Chore,
         memberName: String,
-        hour: Int = 21
+        hour: Int = 21,
+        minute: Int = 0
     ) async {
         guard userPrefersChore(.eveningReminder, choreID: chore.id) else { return }
         let content = UNMutableNotificationContent()
@@ -103,6 +104,7 @@ public final class NotificationService: NSObject {
 
         var date = DateComponents()
         date.hour = hour
+        date.minute = minute
         let trigger = UNCalendarNotificationTrigger(dateMatching: date, repeats: true)
 
         let request = UNNotificationRequest(
@@ -266,6 +268,21 @@ public final class NotificationService: NSObject {
 
     public func setChorePreference(_ kind: NotificationKind, choreID: UUID, enabled: Bool) {
         UserDefaults.standard.set(enabled, forKey: choreKey(kind, choreID))
+    }
+
+    /// 가사별 알림 시각(자정 기준 분). 기본: 오전 9:00(540), 저녁 21:00(1260).
+    private func timeKey(_ kind: NotificationKind, _ choreID: UUID) -> String {
+        "\(kind.rawValue).time.\(choreID.uuidString)"
+    }
+    public func choreTimeMinutes(_ kind: NotificationKind, choreID: UUID) -> Int {
+        let key = timeKey(kind, choreID)
+        if UserDefaults.standard.object(forKey: key) == nil {
+            return kind == .morningDuty ? 9 * 60 : 21 * 60
+        }
+        return UserDefaults.standard.integer(forKey: key)
+    }
+    public func setChoreTimeMinutes(_ kind: NotificationKind, choreID: UUID, minutes: Int) {
+        UserDefaults.standard.set(minutes, forKey: timeKey(kind, choreID))
     }
 
     // MARK: - 카테고리/액션 (당번 알림 푸시에서 바로 "완료" 가능)

@@ -27,20 +27,23 @@ public actor InMemoryChoreRepository: ChoreRepositoryProtocol {
         icon: String,
         cycle: ChoreCycle,
         weekdays: [Int],
+        anchorDate: Date?,
         rotationMemberIDs: [UUID]
     ) async throws -> Chore {
         guard let first = rotationMemberIDs.first else {
             throw RepositoryError.invalidInput(reason: "로테이션 멤버가 0명입니다")
         }
+        let due = (cycle == .once || cycle == .monthly) ? (anchorDate ?? .now) : nextDate(from: .now, cycle: cycle)
         let chore = Chore(
             groupID: groupID,
             title: title,
             icon: icon,
             cycleType: cycle,
             currentAssigneeID: first,
-            nextDueDate: nextDate(from: .now, cycle: cycle),
+            nextDueDate: due,
             rotationMemberIDs: rotationMemberIDs,
-            weekdays: weekdays
+            weekdays: weekdays,
+            anchorDate: anchorDate
         )
         chores[chore.id] = chore
         return chore

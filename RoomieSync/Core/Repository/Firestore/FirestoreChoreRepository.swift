@@ -25,14 +25,16 @@ public actor FirestoreChoreRepository: ChoreRepositoryProtocol {
         icon: String,
         cycle: ChoreCycle,
         weekdays: [Int],
+        anchorDate: Date?,
         rotationMemberIDs: [UUID]
     ) async throws -> Chore {
         guard let first = rotationMemberIDs.first else {
             throw RepositoryError.invalidInput(reason: "로테이션 멤버가 0명입니다")
         }
+        let due = (cycle == .once || cycle == .monthly) ? (anchorDate ?? .now) : nextDate(from: .now, cycle: cycle)
         let chore = Chore(groupID: groupID, title: title, icon: icon, cycleType: cycle,
-                          currentAssigneeID: first, nextDueDate: nextDate(from: .now, cycle: cycle),
-                          rotationMemberIDs: rotationMemberIDs, weekdays: weekdays)
+                          currentAssigneeID: first, nextDueDate: due,
+                          rotationMemberIDs: rotationMemberIDs, weekdays: weekdays, anchorDate: anchorDate)
         try await choresCol.document(chore.id.uuidString).setData(chore.fsDict)
         return chore
     }

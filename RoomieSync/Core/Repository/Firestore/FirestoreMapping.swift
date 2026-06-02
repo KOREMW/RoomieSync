@@ -89,7 +89,7 @@ extension Member {
 
 extension Chore {
     var fsDict: [String: Any] {
-        [
+        var dict: [String: Any] = [
             "id": id.uuidString,
             "groupID": groupID.uuidString,
             "title": title,
@@ -101,6 +101,8 @@ extension Chore {
             "rotationMemberIDs": FSMap.ids(rotationMemberIDs),
             "weekdays": weekdays
         ]
+        if let anchorDate { dict["anchorDate"] = FSMap.epoch(anchorDate) }
+        return dict
     }
     init?(fs d: [String: Any]) {
         guard let id = FSMap.uuid(d["id"]),
@@ -115,7 +117,8 @@ extension Chore {
         self.init(id: id, groupID: gid, title: title, icon: icon, cycleType: cycle,
                   currentAssigneeID: assignee, nextDueDate: due, rotationStartedAt: started,
                   rotationMemberIDs: FSMap.uuids(d["rotationMemberIDs"]),
-                  weekdays: FSMap.ints(d["weekdays"]))
+                  weekdays: FSMap.ints(d["weekdays"]),
+                  anchorDate: FSMap.date(d["anchorDate"]))
     }
 }
 

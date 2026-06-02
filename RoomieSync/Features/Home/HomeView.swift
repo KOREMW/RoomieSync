@@ -16,6 +16,8 @@ struct HomeView: View {
     var onOpenChores: () -> Void = {}
     @Environment(\.repositories) private var repositories
     @State private var viewModel: HomeViewModel?
+    @State private var showGroupSwitcher = false
+    @State private var showBreakdown = false
 
     var body: some View {
         ScrollView {
@@ -43,6 +45,20 @@ struct HomeView: View {
             await viewModel?.load()
         }
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button { showGroupSwitcher = true } label: {
+                    Image(systemName: "line.3.horizontal")
+                        .foregroundStyle(Tokens.textPrimary)
+                }
+            }
+        }
+        .sheet(isPresented: $showGroupSwitcher) {
+            GroupSwitcherSheet(currentGroupID: groupID)
+        }
+        .sheet(isPresented: $showBreakdown) {
+            SettlementBreakdownView(groupID: groupID)
+        }
     }
 
     @ViewBuilder
@@ -117,7 +133,10 @@ struct HomeView: View {
             HStack {
                 Text("이번 주 정산").font(Typo.sectionTitle())
                 Spacer()
-                Image(systemName: "info.circle").foregroundStyle(Tokens.textTertiary)
+                Button { showBreakdown = true } label: {
+                    Image(systemName: "info.circle").foregroundStyle(Tokens.textTertiary)
+                }
+                .buttonStyle(.plain)
             }
             HStack(spacing: Spacing.m) {
                 BalanceCard(kind: .receive, amount: vm.receiveAmount)

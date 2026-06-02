@@ -11,14 +11,15 @@ import Foundation
 import Observation
 
 public enum ChoreFilter: String, CaseIterable, Identifiable {
-    case all, daily, weekly, monthly
+    case all, daily, weekly, monthly, once
     public var id: String { rawValue }
     public var label: String {
         switch self {
         case .all:     return "전체"
         case .daily:   return "매일"
-        case .weekly:  return "주1회"
-        case .monthly: return "월1회"
+        case .weekly:  return "매주"
+        case .monthly: return "매 월"
+        case .once:    return "선택"
         }
     }
     public var cycle: ChoreCycle? {
@@ -27,6 +28,7 @@ public enum ChoreFilter: String, CaseIterable, Identifiable {
         case .daily:   return .daily
         case .weekly:  return .weekly
         case .monthly: return .monthly
+        case .once:    return .once
         }
     }
 }
@@ -75,8 +77,9 @@ public final class ChoreViewModel {
     }
 
     public func addChore(
-        title: String, icon: String, cycle: ChoreCycle, weekdays: [Int],
-        notifyMorning: Bool = true, notifyEvening: Bool = true
+        title: String, icon: String, cycle: ChoreCycle, weekdays: [Int], anchorDate: Date? = nil,
+        notifyMorning: Bool = true, notifyEvening: Bool = true,
+        morningMinutes: Int = 540, eveningMinutes: Int = 1260
     ) async -> Bool {
         do {
             let chore = try await choreRepo.createChore(
@@ -85,9 +88,11 @@ public final class ChoreViewModel {
                 icon: icon,
                 cycle: cycle,
                 weekdays: weekdays,
+                anchorDate: anchorDate,
                 rotationMemberIDs: members.map(\.id)
             )
-            applyChoreNotifications(chore: chore, morning: notifyMorning, evening: notifyEvening)
+            applyChoreNotifications(chore: chore, morning: notifyMorning, evening: notifyEvening,
+                                    morningMinutes: morningMinutes, eveningMinutes: eveningMinutes)
             await load()
             return true
         } catch {
@@ -97,13 +102,15 @@ public final class ChoreViewModel {
     }
 
     public func updateChore(
-        _ chore: Chore, notifyMorning: Bool? = nil, notifyEvening: Bool? = nil
+        _ chore: Chore, notifyMorning: Bool? = nil, notifyEvening: Bool? = nil,
+        morningMinutes: Int = 540, eveningMinutes: Int = 1260
     ) async -> Bool {
         do {
             _ = try await choreRepo.updateChore(chore)
             if let m = notifyMorning, let e = notifyEvening {
                 NotificationService.shared.cancelForChore(chore.id)
-                applyChoreNotifications(chore: chore, morning: m, evening: e)
+                applyChoreNotifications(chore: chore, morning: m, evening: e,
+                                        morningMinutes: morningMinutes, eveningMinutes: eveningMinutes)
             }
             await load()
             return true
@@ -113,14 +120,20 @@ public final class ChoreViewModel {
         }
     }
 
-    /// 가사별 알림 토글 저장 + (켜진 경우) 스케줄링.
-    private func applyChoreNotifications(chore: Chore, morning: Bool, evening: Bool) {
-        NotificationService.shared.setChorePreference(.morningDuty, choreID: chore.id, enabled: morning)
-        NotificationService.shared.setChorePreference(.eveningReminder, choreID: chore.id, enabled: evening)
+    /// 가사별 알림 토글·시각 저장 + (켜진 경우) 스케줄링.
+    private func applyChoreNotifications(chore: Chore, morning: Bool, evening: Bool,
+                                         morningMinutes: Int, eveningMinutes: Int) {
+        let ns = NotificationService.shared
+        ns.setChorePreference(.morningDuty, choreID: chore.id, enabled: morning)
+        ns.setChorePreference(.eveningReminder, choreID: chore.id, enabled: evening)
+        ns.setChoreTimeMinutes(.morningDuty, choreID: chore.id, minutes: morningMinutes)
+        ns.setChoreTimeMinutes(.eveningReminder, choreID: chore.id, minutes: eveningMinutes)
         let assigneeName = members.first(where: { $0.id == chore.currentAssigneeID })?.name ?? ""
         Task {
-            await NotificationService.shared.scheduleMorningDuty(chore: chore, memberName: assigneeName)
-            await NotificationService.shared.scheduleEveningReminder(chore: chore, memberName: assigneeName)
+            await ns.scheduleMorningDuty(chore: chore, memberName: assigneeName,
+                                         hour: morningMinutes / 60, minute: morningMinutes % 60)
+            await ns.scheduleEveningReminder(chore: chore, memberName: assigneeName,
+                                             hour: eveningMinutes / 60, minute: eveningMinutes % 60)
         }
     }
 

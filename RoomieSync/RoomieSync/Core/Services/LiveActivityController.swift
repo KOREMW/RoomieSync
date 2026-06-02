@@ -49,10 +49,10 @@ public final class LiveActivityController {
 
     public func endChoreIfNeeded() {
         guard let act = inProgressActivity else { return }
-        Task {
-            await act.end(act.content, dismissalPolicy: .immediate)
-            inProgressActivity = nil
-        }
+        inProgressActivity = nil
+        // Activity 는 Sendable 이 아니지만, @MainActor 로 직렬화되어 실제 경합은 없다.
+        nonisolated(unsafe) let activity = act
+        Task { await activity.end(activity.content, dismissalPolicy: .immediate) }
     }
 
     // MARK: - 정산 카운트다운
@@ -78,17 +78,20 @@ public final class LiveActivityController {
 
     public func updateCountdown(daysRemaining: Int, receiveKRW: Int) {
         guard let act = countdownActivity else { return }
-        let new = SettlementCountdownAttributes.ContentState(
-            daysRemaining: daysRemaining, receiveAmountKRW: receiveKRW
+        let content = ActivityContent(
+            state: SettlementCountdownAttributes.ContentState(
+                daysRemaining: daysRemaining, receiveAmountKRW: receiveKRW
+            ),
+            staleDate: nil
         )
-        Task { await act.update(.init(state: new, staleDate: nil)) }
+        nonisolated(unsafe) let activity = act
+        Task { await activity.update(content) }
     }
 
     public func endCountdownIfNeeded() {
         guard let act = countdownActivity else { return }
-        Task {
-            await act.end(act.content, dismissalPolicy: .immediate)
-            countdownActivity = nil
-        }
+        countdownActivity = nil
+        nonisolated(unsafe) let activity = act
+        Task { await activity.end(activity.content, dismissalPolicy: .immediate) }
     }
 }

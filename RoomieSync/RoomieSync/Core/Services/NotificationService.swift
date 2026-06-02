@@ -296,7 +296,7 @@ public enum NotificationCategory: String {
 
 // MARK: - Foreground 표시 + 액션 처리
 
-extension NotificationService: UNUserNotificationCenterDelegate {
+extension NotificationService: @preconcurrency UNUserNotificationCenterDelegate {
 
     public func userNotificationCenter(
         _ center: UNUserNotificationCenter,

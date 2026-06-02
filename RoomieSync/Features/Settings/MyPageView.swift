@@ -142,10 +142,11 @@ struct MyPageView: View {
                         .font(Typo.caption())
                 }
                 if !permissionGranted {
-                    Button("설정 앱 열기") {
-                        if let url = URL(string: UIApplication.openSettingsURLString) {
-                            UIApplication.shared.open(url)
-                        }
+                    Button("알림 설정 열기") {
+                        // iOS 16+ : 앱의 '알림' 설정 화면으로 바로 이동 (권한 허용 토글 직전).
+                        let target = UIApplication.openNotificationSettingsURLString
+                        let url = URL(string: target) ?? URL(string: UIApplication.openSettingsURLString)
+                        if let url { UIApplication.shared.open(url) }
                     }
                 }
             }

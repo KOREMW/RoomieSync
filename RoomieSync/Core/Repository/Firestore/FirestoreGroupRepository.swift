@@ -65,6 +65,16 @@ public actor FirestoreGroupRepository: GroupRepositoryProtocol {
         return member
     }
 
+    public func updateMemberAccount(_ memberID: UUID, bankName: String, accountNumber: String) async throws -> Member {
+        let ref = membersCol.document(memberID.uuidString)
+        let doc = try await ref.getDocument()
+        guard let data = doc.data(), var member = Member(fs: data) else { throw RepositoryError.notFound }
+        try await ref.updateData(["bankName": bankName, "accountNumber": accountNumber])
+        member.bankName = bankName
+        member.accountNumber = accountNumber
+        return member
+    }
+
     public func fetchMembers(ofGroup groupID: UUID) async throws -> [Member] {
         let snap = try await membersCol.whereField("groupID", isEqualTo: groupID.uuidString).getDocuments()
         return snap.documents.compactMap { Member(fs: $0.data()) }.sorted { $0.joinedAt < $1.joinedAt }

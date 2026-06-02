@@ -25,6 +25,9 @@ public protocol GroupRepositoryProtocol: Sendable {
     /// 멤버 이름 변경 — 마이페이지에서 본인 이름 수정.
     func updateMemberName(_ memberID: UUID, name: String) async throws -> Member
 
+    /// 멤버 정산 계좌 저장 — 다른 멤버가 송금 시 조회.
+    func updateMemberAccount(_ memberID: UUID, bankName: String, accountNumber: String) async throws -> Member
+
     /// 그룹 내 멤버 전체.
     func fetchMembers(ofGroup groupID: UUID) async throws -> [Member]
 

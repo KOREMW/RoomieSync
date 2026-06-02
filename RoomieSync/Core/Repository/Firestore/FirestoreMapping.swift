@@ -67,13 +67,16 @@ extension Group {
 
 extension Member {
     var fsDict: [String: Any] {
-        [
+        var dict: [String: Any] = [
             "id": id.uuidString,
             "name": name,
             "avatarColorHex": avatarColorHex,
             "joinedAt": FSMap.epoch(joinedAt),
             "groupID": groupID.uuidString
         ]
+        if let bankName { dict["bankName"] = bankName }
+        if let accountNumber { dict["accountNumber"] = accountNumber }
+        return dict
     }
     init?(fs d: [String: Any]) {
         guard let id = FSMap.uuid(d["id"]),
@@ -81,7 +84,8 @@ extension Member {
               let color = FSMap.str(d["avatarColorHex"]),
               let joined = FSMap.date(d["joinedAt"]),
               let gid = FSMap.uuid(d["groupID"]) else { return nil }
-        self.init(id: id, name: name, avatarColorHex: color, joinedAt: joined, groupID: gid)
+        self.init(id: id, name: name, avatarColorHex: color, joinedAt: joined, groupID: gid,
+                  bankName: FSMap.str(d["bankName"]), accountNumber: FSMap.str(d["accountNumber"]))
     }
 }
 

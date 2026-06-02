@@ -79,6 +79,19 @@ public actor SwiftDataGroupRepository: GroupRepositoryProtocol {
         return member.toDomain()
     }
 
+    public func updateMemberAccount(_ memberID: UUID, bankName: String, accountNumber: String) async throws -> Member {
+        let predicate = #Predicate<MemberEntity> { $0.id == memberID }
+        guard let member = try modelContext.fetch(FetchDescriptor<MemberEntity>(predicate: predicate)).first else {
+            throw RepositoryError.notFound
+        }
+        member.bankName = bankName
+        member.accountNumber = accountNumber
+        do { try modelContext.save() } catch {
+            throw RepositoryError.persistenceFailure(underlying: error.localizedDescription)
+        }
+        return member.toDomain()
+    }
+
     public func fetchMembers(ofGroup groupID: UUID) async throws -> [Member] {
         let group = try fetchGroupEntity(id: groupID)
         return (group.members ?? []).map { $0.toDomain() }.sorted { $0.joinedAt < $1.joinedAt }

@@ -16,6 +16,8 @@ public final class MemberEntity {
     public var name: String = ""
     public var avatarColorHex: String = "#4F46E5"   // 기본은 Primary
     public var joinedAt: Date = Date()
+    public var bankName: String? = nil
+    public var accountNumber: String? = nil
 
     /// 소속 그룹 — Member 단독 삭제 시 Group 은 유지 (.nullify)
     @Relationship(deleteRule: .nullify)
@@ -44,7 +46,9 @@ public extension MemberEntity {
             name: name,
             avatarColorHex: avatarColorHex,
             joinedAt: joinedAt,
-            groupID: group?.id ?? UUID()   // 정상 데이터라면 항상 group 존재
+            groupID: group?.id ?? UUID(),   // 정상 데이터라면 항상 group 존재
+            bankName: bankName,
+            accountNumber: accountNumber
         )
     }
 
@@ -52,5 +56,7 @@ public extension MemberEntity {
         self.name = domain.name
         self.avatarColorHex = domain.avatarColorHex
         self.joinedAt = domain.joinedAt
+        self.bankName = domain.bankName
+        self.accountNumber = domain.accountNumber
     }
 }

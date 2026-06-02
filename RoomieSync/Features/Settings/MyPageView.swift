@@ -24,14 +24,11 @@ struct MyPageView: View {
     @State private var nameSaved: Bool = false
     @State private var codeCopied: Bool = false
 
-    // 정산 계좌 (로컬 저장) — 저장 버튼으로만 반영
-    @AppStorage("settlementBankName") private var bankName: String = ""
-    @AppStorage("settlementAccountNumber") private var accountNumber: String = ""
-    @AppStorage("settlementAccountHolder") private var accountHolder: String = ""
+    // 정산 계좌 — 내 멤버 정보에 저장(동기화). 다른 멤버가 송금 시 조회.
     @State private var draftBank: String = ""
     @State private var draftAccount: String = ""
-    @State private var draftHolder: String = ""
     @State private var accountSaved: Bool = false
+    @State private var isSavingAccount: Bool = false
     @State private var revealAccount: Bool = false
 
     // 그룹 나가기
@@ -90,25 +87,22 @@ struct MyPageView: View {
                     }
                     .buttonStyle(.borderless)
                 }
-                TextField("예금주", text: $draftHolder)
-                    .onChange(of: draftHolder) { _, _ in accountSaved = false }
                 Button {
-                    bankName = draftBank.trimmingCharacters(in: .whitespaces)
-                    accountNumber = draftAccount.trimmingCharacters(in: .whitespaces)
-                    accountHolder = draftHolder.trimmingCharacters(in: .whitespaces)
-                    accountSaved = true
-                    revealAccount = false
-                    HapticManager.shared.success()
+                    Task { await saveAccount() }
                 } label: {
                     HStack {
                         Spacer()
-                        Label(accountSaved ? "저장됨" : "계좌 저장", systemImage: accountSaved ? "checkmark" : "tray.and.arrow.down")
-                            .fontWeight(.semibold)
+                        if isSavingAccount { ProgressView() }
+                        else {
+                            Label(accountSaved ? "저장됨" : "계좌 저장", systemImage: accountSaved ? "checkmark" : "tray.and.arrow.down")
+                                .fontWeight(.semibold)
+                        }
                         Spacer()
                     }
                 }
+                .disabled(myMemberID == nil || isSavingAccount)
                 .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }   // 구분선 전체 너비로
-                Text("룸메이트가 정산할 때 보낼 내 계좌입니다. 계좌번호는 숨겨지며 '눈' 버튼으로 확인하세요.")
+                Text("예금주는 내 이름(\(myName))으로 표시됩니다. 룸메이트가 정산할 때 이 계좌로 송금합니다.")
                     .font(Typo.caption())
                     .foregroundStyle(Tokens.textSecondary)
             }
@@ -191,9 +185,6 @@ struct MyPageView: View {
         .task {
             let settings = await UNUserNotificationCenter.current().notificationSettings()
             permissionGranted = settings.authorizationStatus == .authorized
-            draftBank = bankName
-            draftAccount = accountNumber
-            draftHolder = accountHolder
             await loadProfile()
         }
     }
@@ -225,6 +216,8 @@ struct MyPageView: View {
             if let me = members.first {
                 myMemberID = me.id
                 myName = me.name
+                draftBank = me.bankName ?? ""
+                draftAccount = me.accountNumber ?? ""
             }
         } catch {
             // 프로필 로드 실패는 조용히 무시(마이페이지의 알림 설정은 계속 사용 가능)
@@ -242,6 +235,25 @@ struct MyPageView: View {
             _ = try await repositories.group.updateMemberName(id, name: trimmed)
             myName = trimmed
             nameSaved = true
+            HapticManager.shared.success()
+        } catch {
+            // 실패 시 저장 상태 미표시
+        }
+    }
+
+    @MainActor
+    private func saveAccount() async {
+        guard let id = myMemberID else { return }
+        isSavingAccount = true
+        defer { isSavingAccount = false }
+        do {
+            _ = try await repositories.group.updateMemberAccount(
+                id,
+                bankName: draftBank.trimmingCharacters(in: .whitespaces),
+                accountNumber: draftAccount.trimmingCharacters(in: .whitespaces)
+            )
+            accountSaved = true
+            revealAccount = false
             HapticManager.shared.success()
         } catch {
             // 실패 시 저장 상태 미표시

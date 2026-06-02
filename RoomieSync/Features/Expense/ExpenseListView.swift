@@ -14,8 +14,7 @@ struct ExpenseListView: View {
     @Environment(\.repositories) private var repositories
     @State private var viewModel: ExpenseViewModel?
     @State private var showAddSheet: Bool = false
-    @State private var settlementPlan: [Settlement] = []
-    @State private var showSettlementSheet: Bool = false
+    @State private var showSettlementAction: Bool = false
     @State private var editingExpense: Expense? = nil
 
     var body: some View {
@@ -70,10 +69,8 @@ struct ExpenseListView: View {
                 ExpenseAddView(viewModel: vm, editing: exp)
             }
         }
-        .sheet(isPresented: $showSettlementSheet) {
-            if let vm = viewModel {
-                SettlementSummarySheet(plan: settlementPlan, members: vm.members)
-            }
+        .sheet(isPresented: $showSettlementAction) {
+            SettlementActionView(groupID: groupID)
         }
         .task {
             if viewModel == nil {
@@ -105,7 +102,7 @@ struct ExpenseListView: View {
             Spacer()
             // 큰 원형 정산 버튼
             Button {
-                Task { await runSettlement(vm) }
+                showSettlementAction = true
             } label: {
                 VStack(spacing: 6) {
                     ZStack {
@@ -163,14 +160,6 @@ struct ExpenseListView: View {
             .opacity(vm.filter == .all ? 0.4 : 1)
         }
         .padding(.horizontal, Spacing.l)
-    }
-
-    // MARK: - 정산 실행
-
-    @MainActor
-    private func runSettlement(_ vm: ExpenseViewModel) async {
-        settlementPlan = await vm.performSettlement()
-        showSettlementSheet = !settlementPlan.isEmpty
     }
 
     // MARK: - 지출 행

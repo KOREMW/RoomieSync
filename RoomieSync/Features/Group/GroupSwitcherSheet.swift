@@ -44,6 +44,7 @@ struct GroupSwitcherSheet: View {
                                         Image(systemName: "checkmark.circle.fill").foregroundStyle(Tokens.primary)
                                     }
                                 }
+                                .contentShape(Rectangle())   // 빈 공간 포함 행 전체 탭
                             }
                             .buttonStyle(.plain)
                         }

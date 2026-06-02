@@ -20,18 +20,31 @@ public struct Member: Identifiable, Hashable, Sendable, Codable {
     /// 그룹 소속 — Domain Layer 에서는 ID 만 보관, 관계는 Repository 가 해석
     public var groupID: UUID
 
+    /// 정산 입금 계좌 (선택). 다른 멤버가 송금할 때 사용.
+    public var bankName: String?
+    public var accountNumber: String?
+
     public init(
         id: UUID = UUID(),
         name: String,
         avatarColorHex: String,
         joinedAt: Date = .now,
-        groupID: UUID
+        groupID: UUID,
+        bankName: String? = nil,
+        accountNumber: String? = nil
     ) {
         self.id = id
         self.name = name
         self.avatarColorHex = avatarColorHex
         self.joinedAt = joinedAt
         self.groupID = groupID
+        self.bankName = bankName
+        self.accountNumber = accountNumber
+    }
+
+    /// 계좌 등록 여부.
+    public var hasAccount: Bool {
+        !(bankName ?? "").isEmpty && !(accountNumber ?? "").isEmpty
     }
 
     /// 이니셜 — 한글 1 자 + 영문 2 자까지. 시안의 "JH", "SY" 형태.

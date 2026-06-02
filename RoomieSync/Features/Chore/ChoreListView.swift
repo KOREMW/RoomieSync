@@ -54,13 +54,6 @@ struct ChoreListView: View {
         .background(Tokens.surface.ignoresSafeArea())
         .navigationTitle("가사 당번")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button { showAddSheet = true } label: {
-                    Image(systemName: "plus")
-                }
-            }
-        }
         .sheet(isPresented: $showAddSheet) {
             if let vm = viewModel {
                 ChoreAddSheet(viewModel: vm)
@@ -73,15 +66,27 @@ struct ChoreListView: View {
             await viewModel?.load()
         }
         .undoToast(item: $pendingToast)
+        .alert("오류", isPresented: errorBinding) {
+            Button("확인", role: .cancel) {}
+        } message: {
+            Text(viewModel?.errorMessage ?? "")
+        }
         .overlay(alignment: .bottomTrailing) {
             if let vm = viewModel, !vm.filteredChores.isEmpty {
-                RoomieButton("+ 새 가사", icon: "plus") {
+                RoomieButton("새 가사", icon: "plus") {
                     showAddSheet = true
                 }
                 .fixedSize()
                 .padding(Spacing.l)
             }
         }
+    }
+
+    private var errorBinding: Binding<Bool> {
+        Binding(
+            get: { viewModel?.errorMessage != nil },
+            set: { if !$0 { viewModel?.clearError() } }
+        )
     }
 
     // MARK: - 필터 칩

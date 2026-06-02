@@ -59,6 +59,8 @@ public final class ChoreViewModel {
         return allChores.filter { $0.cycleType == cycle }
     }
 
+    public func clearError() { errorMessage = nil }
+
     public func load() async {
         isLoading = true
         defer { isLoading = false }

@@ -98,7 +98,8 @@ public extension View {
                     }
                 )
                 .transition(.move(edge: .bottom).combined(with: .opacity))
-                .padding(.bottom, Spacing.xxl)
+                // 하단 탭바(약 49~83pt)에 가려지지 않도록 충분히 띄운다.
+                .padding(.bottom, Spacing.xxl + 70)
             }
         }
         .animation(.spring(duration: 0.3), value: item.wrappedValue != nil)

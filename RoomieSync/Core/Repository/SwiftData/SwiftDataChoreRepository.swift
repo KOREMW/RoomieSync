@@ -90,9 +90,6 @@ public actor SwiftDataChoreRepository: ChoreRepositoryProtocol {
 
     public func cancelCompletion(_ completionID: UUID) async throws {
         let entity = try fetchCompletionEntity(id: completionID)
-        guard !entity.isConfirmed else {
-            throw RepositoryError.invalidInput(reason: "이미 확정된 완료는 취소할 수 없습니다")
-        }
         modelContext.delete(entity)
         try saveOrThrow()
     }

@@ -48,6 +48,10 @@ public final class ChoreViewModel {
     public private(set) var isLoading: Bool = false
     public private(set) var errorMessage: String? = nil
     public private(set) var currentUserID: UUID? = nil
+    /// 오늘 내가 완료한 가사 → 완료 기록 (취소 버튼 표시/취소용).
+    public private(set) var completedTodayByChore: [UUID: ChoreCompletion] = [:]
+
+    public func isCompletedToday(_ choreID: UUID) -> Bool { completedTodayByChore[choreID] != nil }
 
     public init(groupID: UUID, repositories: RepositoryBundle) {
         self.groupID = groupID
@@ -71,6 +75,16 @@ public final class ChoreViewModel {
             members = try await groupRepo.fetchMembers(ofGroup: groupID)
             currentUserID = members.first?.id
             allChores = try await choreRepo.fetchChores(groupID: groupID)
+
+            // 오늘 내가 완료한 가사 맵 구성 (취소 버튼 노출용)
+            let startOfToday = Calendar.current.startOfDay(for: .now)
+            let todays = try await choreRepo.fetchAllCompletions(groupID: groupID, since: startOfToday)
+            var map: [UUID: ChoreCompletion] = [:]
+            for c in todays where c.memberID == currentUserID {
+                if let existing = map[c.choreID], existing.completedAt > c.completedAt { continue }
+                map[c.choreID] = c
+            }
+            completedTodayByChore = map
         } catch {
             errorMessage = CKErrorMapper.userMessage(for: error)
         }
@@ -148,39 +162,39 @@ public final class ChoreViewModel {
         }
     }
 
-    public func tentativeComplete(chore: Chore) async -> UUID? {
-        guard let memberID = currentUserID else { return nil }
+    /// 완료 — 대기 시간 없이 즉시 완료 기록(확정) + 다음 멤버로 회전.
+    public func complete(chore: Chore) async {
+        guard let memberID = currentUserID else { return }
         do {
-            let completion = try await choreRepo.recordCompletion(
+            _ = try await choreRepo.recordCompletion(
                 choreID: chore.id,
                 memberID: memberID,
                 deviceIdentifier: device.deviceIdentifier(),
-                isConfirmed: false
+                isConfirmed: true
             )
-            HapticManager.shared.success()
-            return completion.id
-        } catch {
-            errorMessage = CKErrorMapper.userMessage(for: error)
-            return nil
-        }
-    }
-
-    public func confirmComplete(completionID: UUID) async {
-        do {
-            let rotated = try await choreRepo.confirmCompletion(completionID)
-            if let me = currentUserID,
-               let member = members.first(where: { $0.id == me }) {
+            // 다음 멤버로 회전
+            let rotated = ChoreRotation.rotateToNext(chore)
+            _ = try await choreRepo.updateChore(rotated)
+            if let member = members.first(where: { $0.id == memberID }) {
                 await NotificationService.shared.notifyMemberCompletion(member: member, chore: rotated)
             }
+            HapticManager.shared.success()
             await load()
         } catch {
             errorMessage = CKErrorMapper.userMessage(for: error)
         }
     }
 
-    public func cancelComplete(completionID: UUID) async {
+    /// 완료 취소 — 오늘 완료 기록 삭제 + 담당자(회전)를 완료자 본인으로 원복.
+    public func cancelComplete(chore: Chore) async {
+        guard let completion = completedTodayByChore[chore.id] else { return }
         do {
-            try await choreRepo.cancelCompletion(completionID)
+            try await choreRepo.cancelCompletion(completion.id)
+            // 회전 원복: 현재 담당자를 완료자(=완료 시점의 담당자)로 되돌림
+            var reverted = chore
+            reverted.currentAssigneeID = completion.memberID
+            _ = try await choreRepo.updateChore(reverted)
+            await load()
         } catch {
             errorMessage = CKErrorMapper.userMessage(for: error)
         }

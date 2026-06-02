@@ -82,10 +82,7 @@ public actor InMemoryChoreRepository: ChoreRepositoryProtocol {
     }
 
     public func cancelCompletion(_ completionID: UUID) async throws {
-        guard let c = completions[completionID] else { throw RepositoryError.notFound }
-        guard !c.isConfirmed else {
-            throw RepositoryError.invalidInput(reason: "이미 확정된 완료는 취소할 수 없습니다")
-        }
+        guard completions[completionID] != nil else { throw RepositoryError.notFound }
         completions[completionID] = nil
     }
 

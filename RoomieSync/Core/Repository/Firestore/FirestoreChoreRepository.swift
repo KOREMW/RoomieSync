@@ -74,15 +74,7 @@ public actor FirestoreChoreRepository: ChoreRepositoryProtocol {
     }
 
     public func cancelCompletion(_ completionID: UUID) async throws {
-        let ref = completionsCol.document(completionID.uuidString)
-        let doc = try await ref.getDocument()
-        guard let data = doc.data(), let completion = ChoreCompletion(fs: data) else {
-            throw RepositoryError.notFound
-        }
-        guard !completion.isConfirmed else {
-            throw RepositoryError.invalidInput(reason: "이미 확정된 완료는 취소할 수 없습니다")
-        }
-        try await ref.delete()
+        try await completionsCol.document(completionID.uuidString).delete()
     }
 
     public func confirmCompletion(_ completionID: UUID) async throws -> Chore {

@@ -14,7 +14,6 @@ struct ChoreListView: View {
     @Environment(\.repositories) private var repositories
     @State private var viewModel: ChoreViewModel?
     @State private var showAddSheet: Bool = false
-    @State private var pendingToast: UndoToastConfig? = nil
     @State private var editingChore: Chore? = nil
 
     var body: some View {
@@ -73,7 +72,6 @@ struct ChoreListView: View {
             }
             await viewModel?.load()
         }
-        .undoToast(item: $pendingToast)
         .alert("오류", isPresented: errorBinding) {
             Button("확인", role: .cancel) {}
         } message: {
@@ -120,6 +118,7 @@ struct ChoreListView: View {
     @ViewBuilder
     private func choreCard(_ chore: Chore, vm: ChoreViewModel) -> some View {
         let isMine = chore.currentAssigneeID == vm.currentUserID
+        let isDone = vm.isCompletedToday(chore.id)
         let assignee = vm.members.first(where: { $0.id == chore.currentAssigneeID })
 
         VStack(alignment: .leading, spacing: Spacing.s) {
@@ -133,9 +132,24 @@ struct ChoreListView: View {
                     .foregroundStyle(Tokens.primary)
                     .clipShape(Capsule())
                 Spacer()
-                if isMine {
+                if isDone {
+                    // 완료됨 → 취소 버튼 (다른 배경색)
                     Button {
-                        Task { await handleComplete(chore, vm: vm) }
+                        Task { await vm.cancelComplete(chore: chore) }
+                    } label: {
+                        Label("취소", systemImage: "arrow.uturn.backward")
+                            .font(Typo.bodyBold())
+                            .padding(.horizontal, Spacing.m)
+                            .padding(.vertical, 6)
+                            .background(Tokens.surfaceMuted)
+                            .foregroundStyle(Tokens.danger)
+                            .clipShape(RoundedRectangle(cornerRadius: Radius.s))
+                    }
+                    .buttonStyle(.plain)
+                } else if isMine {
+                    // 즉시 완료 (대기 없음)
+                    Button {
+                        Task { await vm.complete(chore: chore) }
                     } label: {
                         Text("완료")
                             .font(Typo.bodyBold())
@@ -145,6 +159,7 @@ struct ChoreListView: View {
                             .foregroundStyle(.white)
                             .clipShape(RoundedRectangle(cornerRadius: Radius.s))
                     }
+                    .buttonStyle(.plain)
                 }
             }
             HStack(spacing: Spacing.s) {
@@ -197,16 +212,6 @@ struct ChoreListView: View {
         return chore.rotationMemberIDs[next]
     }
 
-    @MainActor
-    private func handleComplete(_ chore: Chore, vm: ChoreViewModel) async {
-        guard let completionID = await vm.tentativeComplete(chore: chore) else { return }
-        pendingToast = UndoToastConfig(
-            message: "\(chore.icon) \(chore.title) 완료",
-            duration: 5.0,
-            onCancel: { Task { await vm.cancelComplete(completionID: completionID) } },
-            onConfirm: { Task { await vm.confirmComplete(completionID: completionID) } }
-        )
-    }
 }
 
 #Preview("시안 ② 가사") {

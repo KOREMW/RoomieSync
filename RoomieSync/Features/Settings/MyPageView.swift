@@ -199,16 +199,19 @@ struct MyPageView: View {
 
     @MainActor
     private func leaveGroup() async {
-        // 1) 내 멤버 제거
-        if let id = myMemberID {
-            try? await repositories.group.removeMember(id)
+        let repo = repositories.group
+        // 1) 내 멤버 제거 (myMemberID 가 비어도 멤버 목록 첫 멤버로 보강)
+        let before = (try? await repo.fetchMembers(ofGroup: groupID)) ?? []
+        if let id = myMemberID ?? before.first?.id {
+            try? await repo.removeMember(id)
         }
-        // 2) 그룹이 비었으면 그룹 자체 삭제 (목록에 남지 않도록)
-        if let g = try? await repositories.group.fetchGroup(id: groupID), g.memberIDs.isEmpty {
-            try? await repositories.group.deleteGroup(groupID)
+        // 2) 남은 멤버가 없으면 그룹 자체 삭제 → 모임 목록에 남지 않도록
+        let remaining = (try? await repo.fetchMembers(ofGroup: groupID)) ?? []
+        if remaining.isEmpty {
+            try? await repo.deleteGroup(groupID)
         }
-        // 3) 남은 다른 모임이 있으면 그 중 하나로 이동, 없으면 시작 화면("")
-        let others = (try? await repositories.group.fetchAllGroups())?.filter { $0.id != groupID } ?? []
+        // 3) 다른 모임이 있으면 그 모임의 홈으로, 없으면 시작 화면("")
+        let others = (try? await repo.fetchAllGroups())?.filter { $0.id != groupID } ?? []
         currentGroupIDString = others.first?.id.uuidString ?? ""
     }
 

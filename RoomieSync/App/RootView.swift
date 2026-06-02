@@ -30,7 +30,9 @@ struct RootView: View {
                     currentGroupIDString = id.uuidString
                 })
             } else if let groupID = UUID(uuidString: currentGroupIDString) {
+                // 모임이 바뀌면 탭 전체를 새 그룹으로 재구성 (각 탭의 ViewModel 갱신)
                 MainTabView(groupID: groupID)
+                    .id(groupID)
             } else {
                 // 손상된 값 — 초기화
                 Color.clear.onAppear { currentGroupIDString = "" }

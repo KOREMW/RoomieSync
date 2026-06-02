@@ -13,8 +13,9 @@
 import SwiftUI
 import SwiftData
 
-@MainActor
-public struct RepositoryBundle {
+// 보관하는 Repository 들은 모두 Sendable(actor) 이므로 번들 자체도 Sendable.
+// @MainActor 격리가 없어 EnvironmentValues 기본값으로 바로 쓸 수 있다.
+public struct RepositoryBundle: Sendable {
     public let group: any GroupRepositoryProtocol
     public let chore: any ChoreRepositoryProtocol
     public let expense: any ExpenseRepositoryProtocol
@@ -33,7 +34,6 @@ public struct RepositoryBundle {
     }
 
     /// 실 운영 — SwiftData 백엔드.
-    @MainActor
     public static func live(container: ModelContainer) -> RepositoryBundle {
         RepositoryBundle(
             group:   SwiftDataGroupRepository(modelContainer: container),
@@ -44,7 +44,6 @@ public struct RepositoryBundle {
     }
 
     /// Preview / 테스트 — InMemory.
-    @MainActor
     public static func preview() -> RepositoryBundle {
         RepositoryBundle(
             group:   InMemoryGroupRepository(),
@@ -55,14 +54,6 @@ public struct RepositoryBundle {
     }
 }
 
-private struct RepositoryBundleKey: EnvironmentKey {
-    @MainActor
-    static let defaultValue: RepositoryBundle = .preview()
-}
-
 public extension EnvironmentValues {
-    var repositories: RepositoryBundle {
-        get { self[RepositoryBundleKey.self] }
-        set { self[RepositoryBundleKey.self] = newValue }
-    }
+    @Entry var repositories: RepositoryBundle = .preview()
 }

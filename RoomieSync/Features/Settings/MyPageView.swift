@@ -241,7 +241,7 @@ struct MyPageView: View {
     @MainActor
     private func saveName() async {
         guard let id = myMemberID else { return }
-        let trimmed = myName.trimmingCharacters(in: .whitespaces)
+        let trimmed = InputValidator.name(myName)
         guard !trimmed.isEmpty else { return }
         isSavingName = true
         defer { isSavingName = false }
@@ -264,7 +264,7 @@ struct MyPageView: View {
             _ = try await repositories.group.updateMemberAccount(
                 id,
                 bankName: draftBank.trimmingCharacters(in: .whitespaces),
-                accountNumber: draftAccount.trimmingCharacters(in: .whitespaces)
+                accountNumber: InputValidator.accountNumber(draftAccount)
             )
             accountSaved = true
             revealAccount = false

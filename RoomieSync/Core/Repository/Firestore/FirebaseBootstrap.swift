@@ -13,6 +13,9 @@ import Foundation
 #if canImport(FirebaseCore)
 import FirebaseCore
 #endif
+#if canImport(FirebaseAuth)
+import FirebaseAuth
+#endif
 
 public enum FirebaseBootstrap {
     /// 앱 시작 시 한 번 호출. 시작 시점에 단일 스레드에서만 만지므로 nonisolated(unsafe).
@@ -23,12 +26,35 @@ public enum FirebaseBootstrap {
         #if canImport(FirebaseCore)
         guard !isConfigured else { return }
         guard Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist") != nil else {
-            print("ℹ️ GoogleService-Info.plist 없음 → Firestore 비활성 (로컬/CloudKit 사용)")
+            debugLog("ℹ️ GoogleService-Info.plist 없음 → Firestore 비활성 (로컬/CloudKit 사용)")
             return
         }
         FirebaseApp.configure()
         isConfigured = true
-        print("✅ Firebase 구성 완료 → Firestore 백엔드 사용")
+        debugLog("✅ Firebase 구성 완료 → Firestore 백엔드 사용")
+        signInAnonymouslyIfNeeded()
+        #endif
+    }
+
+    /// 보안: Firestore 접근을 인증된 세션으로 제한하기 위해 익명 로그인.
+    /// (콘솔에서 Anonymous Auth 활성화 + 인증 요구 보안 규칙 배포 시 효력 발생)
+    /// 실패해도 앱은 계속 동작하므로 best-effort.
+    private static func signInAnonymouslyIfNeeded() {
+        #if canImport(FirebaseAuth)
+        if Auth.auth().currentUser != nil { return }
+        Auth.auth().signInAnonymously { _, error in
+            if let error {
+                debugLog("ℹ️ 익명 로그인 실패(콘솔에서 Anonymous Auth 활성화 필요): \(error.localizedDescription)")
+            } else {
+                debugLog("✅ Firebase 익명 인증 완료")
+            }
+        }
+        #endif
+    }
+
+    private static func debugLog(_ message: String) {
+        #if DEBUG
+        print(message)
         #endif
     }
 }

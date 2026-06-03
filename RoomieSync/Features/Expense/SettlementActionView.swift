@@ -89,7 +89,7 @@ struct SettlementActionView: View {
             }
             if let me, me.hasAccount {
                 Button {
-                    UIPasteboard.general.string = PaymentLink.accountString(bank: me.bankName ?? "", account: me.accountNumber ?? "")
+                    copySensitive(PaymentLink.accountString(bank: me.bankName ?? "", account: me.accountNumber ?? ""))
                     copied = true
                 } label: {
                     Label(copied ? "내 계좌 복사됨" : "내 계좌 복사 (\(me.bankName ?? "") \(me.accountNumber ?? ""))",
@@ -156,6 +156,14 @@ struct SettlementActionView: View {
         } header: {
             Label("낼 돈", systemImage: "arrow.up.circle.fill").foregroundStyle(Tokens.payCardText)
         }
+    }
+
+    /// 민감정보(계좌)는 60초 후 자동 삭제 + 기기 로컬 전용으로 복사.
+    private func copySensitive(_ text: String) {
+        UIPasteboard.general.setItems(
+            [["public.utf8-plain-text": text]],
+            options: [.localOnly: true, .expirationDate: Date().addingTimeInterval(60)]
+        )
     }
 
     @MainActor

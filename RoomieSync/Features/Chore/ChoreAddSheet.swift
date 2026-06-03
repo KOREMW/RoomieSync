@@ -171,7 +171,7 @@ struct ChoreAddSheet: View {
         let eMin = Self.minutes(from: eveningTime)
         let ok: Bool
         if var updated = editing {
-            updated.title = title.trimmingCharacters(in: .whitespaces)
+            updated.title = InputValidator.choreTitle(title)
             updated.icon = selectedIcon
             updated.cycleType = cycle
             updated.weekdays = days
@@ -180,7 +180,7 @@ struct ChoreAddSheet: View {
                                              morningMinutes: mMin, eveningMinutes: eMin)
         } else {
             ok = await viewModel.addChore(
-                title: title.trimmingCharacters(in: .whitespaces),
+                title: InputValidator.choreTitle(title),
                 icon: selectedIcon, cycle: cycle, weekdays: days, anchorDate: anchor,
                 notifyMorning: notifyMorning, notifyEvening: notifyEvening,
                 morningMinutes: mMin, eveningMinutes: eMin

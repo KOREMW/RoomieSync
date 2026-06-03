@@ -85,8 +85,8 @@ struct GroupCreateView: View {
         do {
             let color = AvatarPalette.hex(at: selectedColorIndex)
             let group = try await repositories.group.createGroup(
-                name: groupName.trimmingCharacters(in: .whitespaces),
-                hostName: hostName.trimmingCharacters(in: .whitespaces),
+                name: InputValidator.groupName(groupName),
+                hostName: InputValidator.name(hostName),
                 hostAvatarColorHex: color
             )
             generatedCode = group.inviteCode
@@ -116,7 +116,7 @@ struct GroupJoinView: View {
                     .autocorrectionDisabled()
                     .font(.system(.title3, design: .monospaced))
                     .onChange(of: code) { _, newValue in
-                        code = String(newValue.uppercased().prefix(6))
+                        code = InputValidator.inviteCode(newValue)
                     }
             }
             Section("내 이름") {
@@ -151,11 +151,11 @@ struct GroupJoinView: View {
         isWorking = true
         defer { isWorking = false }
         do {
-            let group = try await repositories.group.findGroup(byInviteCode: code)
+            let group = try await repositories.group.findGroup(byInviteCode: InputValidator.inviteCode(code))
             let color = AvatarPalette.hex(at: selectedColorIndex)
             _ = try await repositories.group.addMember(
                 toGroup: group.id,
-                name: myName.trimmingCharacters(in: .whitespaces),
+                name: InputValidator.name(myName),
                 avatarColorHex: color
             )
             onJoined(group.id)

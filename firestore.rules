@@ -1,0 +1,56 @@
+rules_version = '2';
+
+// RoomieSync Firestore 보안 규칙
+//
+// 적용 방법:
+//   1) Firebase 콘솔 → Authentication → 로그인 방법 → '익명' 사용 설정
+//   2) Firebase 콘솔 → Firestore Database → 규칙 탭에 아래 내용 붙여넣기 → 게시
+//      (또는 firebase deploy --only firestore:rules)
+//
+// 효과: 테스트 모드(if true, 전체 공개)를 대체해 '인증된 세션'만 접근 가능.
+//       앱은 시작 시 익명 인증(FirebaseBootstrap)으로 자동 로그인한다.
+//
+// 한계(다음 단계): 현재는 인증된 사용자면 모든 그룹 데이터 접근 가능하다.
+//   진짜 그룹별 격리는 사용자(uid)↔멤버 매핑 + 멤버십 검사가 필요하다.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // 문자열 길이 가드 (과도한 페이로드 방지)
+    function okString(field, maxLen) {
+      return !(field in request.resource.data)
+        || (request.resource.data[field] is string && request.resource.data[field].size() <= maxLen);
+    }
+
+    match /groups/{id} {
+      allow read: if signedIn();
+      allow write: if signedIn() && okString('name', 40) && okString('inviteCode', 8);
+    }
+    match /members/{id} {
+      allow read: if signedIn();
+      allow write: if signedIn() && okString('name', 30)
+        && okString('bankName', 30) && okString('accountNumber', 40);
+    }
+    match /chores/{id} {
+      allow read, write: if signedIn() && okString('title', 60) && okString('icon', 16);
+    }
+    match /choreCompletions/{id} {
+      allow read, write: if signedIn();
+    }
+    match /expenses/{id} {
+      allow read, write: if signedIn() && okString('title', 60) && okString('memo', 400);
+    }
+    match /settlements/{id} {
+      allow read, write: if signedIn();
+    }
+
+    // 그 외 경로는 모두 거부
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

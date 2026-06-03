@@ -102,6 +102,8 @@ targets:
         embed: true
       - package: Firebase
         product: FirebaseFirestore
+      - package: Firebase
+        product: FirebaseAuth
 
   # ===== Widget Extension (위젯 + Live Activity 통합) =====
   RoomieSyncWidgets:

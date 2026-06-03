@@ -245,14 +245,14 @@ struct ExpenseAddView: View {
         let expense = Expense(
             id: editing?.id ?? UUID(),
             groupID: viewModel.groupID,
-            title: title.trimmingCharacters(in: .whitespaces),
+            title: InputValidator.expenseTitle(title),
             amount: amount,
             paidByMemberID: payer,
             participantMemberIDs: Array(participantIDs),
             date: date,
             isSettled: editing?.isSettled ?? false,
             category: category,
-            memo: memo.isEmpty ? nil : memo,
+            memo: { let m = InputValidator.memo(memo); return m.isEmpty ? nil : m }(),
             customShares: builtCustomShares
         )
         let ok = isEditing

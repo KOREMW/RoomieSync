@@ -114,22 +114,4 @@ public final class ExpenseViewModel {
             return false
         }
     }
-
-    public func performSettlement() async -> [Settlement] {
-        do {
-            let pending = expenses.filter { !$0.isSettled }
-            let plan = SettlementCalculator.calculate(
-                expenses: pending,
-                members: members,
-                groupID: groupID
-            )
-            try await expenseRepo.saveSettlements(plan)
-            try await expenseRepo.markSettled(pending.map(\.id))
-            await load()
-            return plan
-        } catch {
-            errorMessage = CKErrorMapper.userMessage(for: error)
-            return []
-        }
-    }
 }

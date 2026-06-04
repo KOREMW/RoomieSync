@@ -20,6 +20,7 @@ struct StatsView: View {
             VStack(spacing: Spacing.l) {
                 if let vm = viewModel {
                     choreCountCard(vm)
+                    achievementCard(vm)
                     monthlyTrendCard(vm)
                     categoryDonutCard(vm)
                     if let mvp = vm.mvp { mvpCard(mvp) }
@@ -85,6 +86,64 @@ struct StatsView: View {
                 }
             }
         }
+    }
+
+    // MARK: - 나의 성취 (연속 달성 + 뱃지)
+
+    @ViewBuilder
+    private func achievementCard(_ vm: StatsViewModel) -> some View {
+        SectionCard {
+            HStack {
+                Text("나의 성취").font(Typo.sectionTitle())
+                Spacer()
+            }
+
+            // 연속 달성 + 총 완료
+            HStack(spacing: Spacing.m) {
+                statPill(icon: "flame.fill",
+                         value: "\(vm.myStreakDays)일",
+                         label: "연속 달성",
+                         tint: vm.myStreakDays > 0 ? .orange : Tokens.textTertiary)
+                statPill(icon: "checkmark.seal.fill",
+                         value: "\(vm.myTotalCompletions)회",
+                         label: "누적 완료",
+                         tint: Tokens.primary)
+            }
+
+            // 뱃지 그리드
+            let columns = Array(repeating: GridItem(.flexible(), spacing: Spacing.s), count: 4)
+            LazyVGrid(columns: columns, spacing: Spacing.m) {
+                ForEach(vm.badges) { badge in
+                    VStack(spacing: 4) {
+                        Image(systemName: badge.icon)
+                            .font(.system(size: 26))
+                            .foregroundStyle(badge.earned ? Tokens.primary : Tokens.textTertiary.opacity(0.4))
+                        Text(badge.title)
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundStyle(badge.earned ? Tokens.textPrimary : Tokens.textTertiary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .opacity(badge.earned ? 1 : 0.55)
+                }
+            }
+            .padding(.top, Spacing.xs)
+        }
+    }
+
+    @ViewBuilder
+    private func statPill(icon: String, value: String, label: String, tint: Color) -> some View {
+        HStack(spacing: Spacing.s) {
+            Image(systemName: icon).font(.system(size: 22)).foregroundStyle(tint)
+            VStack(alignment: .leading, spacing: 0) {
+                Text(value).font(Typo.bodyBold())
+                Text(label).font(Typo.caption()).foregroundStyle(Tokens.textSecondary)
+            }
+            Spacer()
+        }
+        .padding(Spacing.m)
+        .background(Tokens.surfaceMuted)
+        .clipShape(RoundedRectangle(cornerRadius: Radius.m))
     }
 
     // MARK: - 월별 지출 추이 (Swift Charts line)

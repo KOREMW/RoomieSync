@@ -26,27 +26,29 @@ service cloud.firestore {
         || (request.resource.data[field] is string && request.resource.data[field].size() <= maxLen);
     }
 
+    // 주의: 권한 동사별 request.resource 유무가 다르다.
+    //   - read/delete: request.resource == null  → okString 가드를 걸면 평가 실패(거부)
+    //   - create/update: request.resource 존재     → okString 으로 길이 검증 가능
+    // 따라서 길이 가드는 create/update 에만 적용하고, read/delete 는 인증만 요구한다.
     match /groups/{id} {
-      allow read: if signedIn();
-      allow write: if signedIn() && okString('name', 40) && okString('inviteCode', 8);
+      allow read, delete: if signedIn();
+      allow create, update: if signedIn() && okString('name', 40) && okString('inviteCode', 8);
     }
     match /members/{id} {
-      allow read: if signedIn();
-      allow write: if signedIn() && okString('name', 30)
+      allow read, delete: if signedIn();
+      allow create, update: if signedIn() && okString('name', 30)
         && okString('bankName', 30) && okString('accountNumber', 40);
     }
     match /chores/{id} {
-      // 읽기(Listen)에는 request.resource 가 없으므로 okString 가드를 걸면 안 된다.
-      // 쓰기에만 길이 가드 적용.
-      allow read: if signedIn();
-      allow write: if signedIn() && okString('title', 60) && okString('icon', 16);
+      allow read, delete: if signedIn();
+      allow create, update: if signedIn() && okString('title', 60) && okString('icon', 16);
     }
     match /choreCompletions/{id} {
       allow read, write: if signedIn();
     }
     match /expenses/{id} {
-      allow read: if signedIn();
-      allow write: if signedIn() && okString('title', 60) && okString('memo', 400);
+      allow read, delete: if signedIn();
+      allow create, update: if signedIn() && okString('title', 60) && okString('memo', 400);
     }
     match /settlements/{id} {
       allow read, write: if signedIn();

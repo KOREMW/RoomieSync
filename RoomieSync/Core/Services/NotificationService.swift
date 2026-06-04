@@ -320,6 +320,13 @@ public final class NotificationService: NSObject {
     public func setBadge(_ count: Int) {
         Task { try? await center.setBadgeCount(count) }
     }
+
+    /// 알림 액션을 위젯 대기 큐에 추가(앱 포그라운드 진입 시 반영).
+    fileprivate func enqueue(_ action: PendingWidgetActions.Action) {
+        var pending = PendingWidgetActions.read()
+        pending.append(action)
+        PendingWidgetActions.write(pending)
+    }
 }
 
 public enum NotificationCategory: String {
@@ -345,15 +352,30 @@ extension NotificationService: @preconcurrency UNUserNotificationCenterDelegate 
         didReceive response: UNNotificationResponse,
         withCompletionHandler completionHandler: @escaping () -> Void
     ) {
-        // TODO: ChoreViewModel.handleQuickAction(...) 호출
-        // 액션 식별자별 분기는 4주차 Widget AppIntent 와 통합하면서 정리
+        // 알림 액션 → 위젯과 동일한 대기 큐(PendingWidgetActions)에 적재.
+        // 다음 앱 포그라운드 진입 시 HomeViewModel.drainWidgetActions 가 Repository 에 반영한다.
+        // (NotificationService 는 Repository 의존이 없으므로 큐를 거쳐 안전하게 위임)
+        let choreID = (response.notification.request.content.userInfo["choreID"] as? String)
+            .flatMap { UUID(uuidString: $0) }
+
         switch response.actionIdentifier {
         case "ACTION_COMPLETE":
-            // 푸시 → 완료 처리 — userInfo 의 choreID 로 Repository 호출
-            break
+            if let id = choreID {
+                // 위젯 스냅샷 즉시 반영 + 큐 적재 (CompleteChoreIntent 와 동일 동작)
+                var snap = SharedSnapshotStore.read()
+                if let idx = snap.todayChores.firstIndex(where: { $0.id == id }) {
+                    snap.todayChores[idx].isCompleted = true
+                    if snap.todayChores[idx].isMine {
+                        snap.undoneCountForMe = max(0, snap.undoneCountForMe - 1)
+                    }
+                    SharedSnapshotStore.write(snap)
+                }
+                enqueue(.completeChore(id: id, at: .now))
+            }
         case "ACTION_SWAP":
-            break
+            if let id = choreID { enqueue(.swapChore(id: id, at: .now)) }
         case "ACTION_OPEN_SETTLE":
+            // .foreground 옵션으로 앱이 열린다(정산 화면은 지출 탭에서 진입).
             break
         default:
             break

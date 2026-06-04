@@ -45,6 +45,7 @@ public struct CompleteChoreIntent: AppIntent {
 public enum PendingWidgetActions {
     public enum Action: Codable, Sendable {
         case completeChore(id: UUID, at: Date)
+        case swapChore(id: UUID, at: Date)   // "오늘 못해요" — 다음 멤버에게 넘김
     }
 
     public static let key = AppKeys.AppGroup.pendingActions

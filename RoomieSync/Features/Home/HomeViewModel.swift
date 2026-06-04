@@ -118,7 +118,13 @@ public final class HomeViewModel {
                     )
                     _ = try await choreRepo.confirmCompletion(completion.id)
                 } catch {
-                    print("⚠️ 위젯 액션 처리 실패: \(error)")
+                    print("⚠️ 위젯/알림 완료 액션 처리 실패: \(error)")
+                }
+            case .swapChore(let id, _):
+                do {
+                    _ = try await choreRepo.swapWithNext(choreID: id)
+                } catch {
+                    print("⚠️ 알림 교대 액션 처리 실패: \(error)")
                 }
             }
         }

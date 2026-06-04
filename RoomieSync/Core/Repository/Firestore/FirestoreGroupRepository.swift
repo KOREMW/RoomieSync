@@ -15,7 +15,12 @@ import Foundation
 import FirebaseFirestore
 
 public actor FirestoreGroupRepository: GroupRepositoryProtocol {
-    private let db = Firestore.firestore()
+    /// 그룹 최대 인원 (SwiftData 구현과 동일).
+    private static let maxMembers = 6
+
+    // Firestore 인스턴스는 내부적으로 스레드-세이프하며, runTransaction 의 escaping 클로저로
+    // 전달해야 하므로 nonisolated(unsafe) 로 둔다.
+    nonisolated(unsafe) private let db = Firestore.firestore()
     private var groups: CollectionReference { db.collection("groups") }
     private var membersCol: CollectionReference { db.collection("members") }
 
@@ -50,13 +55,44 @@ public actor FirestoreGroupRepository: GroupRepositoryProtocol {
 
     public func addMember(toGroup groupID: UUID, name: String, avatarColorHex: String) async throws -> Member {
         await FirebaseAuthGate.shared.ensureSignedIn()
-        let groupRef = groups.document(groupID.uuidString)
-        let doc = try await groupRef.getDocument()
-        guard let data = doc.data(), var group = Group(fs: data) else { throw RepositoryError.notFound }
         let member = Member(name: name, avatarColorHex: avatarColorHex, groupID: groupID)
-        try await membersCol.document(member.id.uuidString).setData(member.fsDict)
-        group.memberIDs.append(member.id)
-        try await groupRef.updateData(["memberIDs": FSMap.ids(group.memberIDs)])
+        let groupRef = groups.document(groupID.uuidString)
+        let memberRef = membersCol.document(member.id.uuidString)
+        let memberDict = member.fsDict
+        let newMemberIDString = member.id.uuidString
+
+        // 트랜잭션으로 "인원수 확인 → 멤버 추가"를 원자적으로 처리한다.
+        //  - #1 최대 인원(6명) 초과 방지 (Firestore 에도 SwiftData 와 동일 검증 적용)
+        //  - #2 동시 합류 경쟁 방지: memberIDs 를 읽고-쓰는 레이스로 멤버가 누락되지 않도록
+        //        트랜잭션 + arrayUnion 으로 원자적 추가.
+        do {
+            _ = try await db.runTransaction { transaction, errorPointer in
+                let snapshot: DocumentSnapshot
+                do {
+                    snapshot = try transaction.getDocument(groupRef)
+                } catch let fetchError as NSError {
+                    errorPointer?.pointee = fetchError
+                    return nil
+                }
+                guard let data = snapshot.data(), let group = Group(fs: data) else {
+                    errorPointer?.pointee = NSError(domain: "RoomieSync", code: 404,
+                        userInfo: [NSLocalizedDescriptionKey: "그룹을 찾을 수 없습니다"])
+                    return nil
+                }
+                guard group.memberIDs.count < Self.maxMembers else {
+                    errorPointer?.pointee = NSError(domain: "RoomieSync", code: 409,
+                        userInfo: [NSLocalizedDescriptionKey: "그룹 최대 인원(\(Self.maxMembers)명)을 초과했습니다"])
+                    return nil
+                }
+                transaction.setData(memberDict, forDocument: memberRef)
+                transaction.updateData(["memberIDs": FieldValue.arrayUnion([newMemberIDString])],
+                                       forDocument: groupRef)
+                return nil
+            }
+        } catch let error as NSError where error.domain == "RoomieSync" {
+            if error.code == 404 { throw RepositoryError.notFound }
+            throw RepositoryError.invalidInput(reason: error.localizedDescription)
+        }
         return member
     }
 

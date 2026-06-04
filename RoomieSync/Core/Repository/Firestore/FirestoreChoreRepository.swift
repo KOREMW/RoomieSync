@@ -28,6 +28,7 @@ public actor FirestoreChoreRepository: ChoreRepositoryProtocol {
         anchorDate: Date?,
         rotationMemberIDs: [UUID]
     ) async throws -> Chore {
+        await FirebaseAuthGate.shared.ensureSignedIn()
         guard let first = rotationMemberIDs.first else {
             throw RepositoryError.invalidInput(reason: "로테이션 멤버가 0명입니다")
         }
@@ -40,6 +41,7 @@ public actor FirestoreChoreRepository: ChoreRepositoryProtocol {
     }
 
     public func updateChore(_ chore: Chore) async throws -> Chore {
+        await FirebaseAuthGate.shared.ensureSignedIn()
         let ref = choresCol.document(chore.id.uuidString)
         let doc = try await ref.getDocument()
         guard doc.exists else { throw RepositoryError.notFound }
@@ -48,11 +50,13 @@ public actor FirestoreChoreRepository: ChoreRepositoryProtocol {
     }
 
     public func fetchChores(groupID: UUID) async throws -> [Chore] {
+        await FirebaseAuthGate.shared.ensureSignedIn()
         let snap = try await choresCol.whereField("groupID", isEqualTo: groupID.uuidString).getDocuments()
         return snap.documents.compactMap { Chore(fs: $0.data()) }.sorted { $0.title < $1.title }
     }
 
     public func fetchChore(id: UUID) async throws -> Chore {
+        await FirebaseAuthGate.shared.ensureSignedIn()
         let doc = try await choresCol.document(id.uuidString).getDocument()
         guard let data = doc.data(), let chore = Chore(fs: data) else { throw RepositoryError.notFound }
         return chore
@@ -64,6 +68,7 @@ public actor FirestoreChoreRepository: ChoreRepositoryProtocol {
         deviceIdentifier: String,
         isConfirmed: Bool
     ) async throws -> ChoreCompletion {
+        await FirebaseAuthGate.shared.ensureSignedIn()
         let chore = try await fetchChore(id: choreID)
         let completion = ChoreCompletion(choreID: choreID, memberID: memberID,
                                          isConfirmed: isConfirmed, deviceIdentifier: deviceIdentifier)
@@ -74,10 +79,12 @@ public actor FirestoreChoreRepository: ChoreRepositoryProtocol {
     }
 
     public func cancelCompletion(_ completionID: UUID) async throws {
+        await FirebaseAuthGate.shared.ensureSignedIn()
         try await completionsCol.document(completionID.uuidString).delete()
     }
 
     public func confirmCompletion(_ completionID: UUID) async throws -> Chore {
+        await FirebaseAuthGate.shared.ensureSignedIn()
         let compRef = completionsCol.document(completionID.uuidString)
         let compDoc = try await compRef.getDocument()
         guard let cdata = compDoc.data(), let completion = ChoreCompletion(fs: cdata) else {
@@ -91,6 +98,7 @@ public actor FirestoreChoreRepository: ChoreRepositoryProtocol {
     }
 
     public func fetchCompletions(choreID: UUID) async throws -> [ChoreCompletion] {
+        await FirebaseAuthGate.shared.ensureSignedIn()
         let snap = try await completionsCol.whereField("choreID", isEqualTo: choreID.uuidString).getDocuments()
         return snap.documents.compactMap { ChoreCompletion(fs: $0.data()) }
             .filter { $0.isConfirmed }
@@ -98,6 +106,7 @@ public actor FirestoreChoreRepository: ChoreRepositoryProtocol {
     }
 
     public func fetchAllCompletions(groupID: UUID, since: Date?) async throws -> [ChoreCompletion] {
+        await FirebaseAuthGate.shared.ensureSignedIn()
         let snap = try await completionsCol.whereField("groupID", isEqualTo: groupID.uuidString).getDocuments()
         var items = snap.documents.compactMap { ChoreCompletion(fs: $0.data()) }.filter { $0.isConfirmed }
         if let since { items = items.filter { $0.completedAt >= since } }
@@ -105,6 +114,7 @@ public actor FirestoreChoreRepository: ChoreRepositoryProtocol {
     }
 
     public func swapWithNext(choreID: UUID) async throws -> Chore {
+        await FirebaseAuthGate.shared.ensureSignedIn()
         let chore = try await fetchChore(id: choreID)
         let swapped = ChoreRotation.swapCurrentWithNext(chore)
         try await choresCol.document(swapped.id.uuidString).setData(swapped.fsDict)
@@ -112,6 +122,7 @@ public actor FirestoreChoreRepository: ChoreRepositoryProtocol {
     }
 
     public func deleteChore(_ choreID: UUID) async throws {
+        await FirebaseAuthGate.shared.ensureSignedIn()
         try await choresCol.document(choreID.uuidString).delete()
     }
 

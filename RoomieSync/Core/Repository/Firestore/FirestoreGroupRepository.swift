@@ -22,6 +22,7 @@ public actor FirestoreGroupRepository: GroupRepositoryProtocol {
     public init() {}
 
     public func createGroup(name: String, hostName: String, hostAvatarColorHex: String) async throws -> Group {
+        await FirebaseAuthGate.shared.ensureSignedIn()
         let groupID = UUID()
         let host = Member(name: hostName, avatarColorHex: hostAvatarColorHex, groupID: groupID)
         let group = Group(id: groupID, name: name,
@@ -32,6 +33,7 @@ public actor FirestoreGroupRepository: GroupRepositoryProtocol {
     }
 
     public func findGroup(byInviteCode code: String) async throws -> Group {
+        await FirebaseAuthGate.shared.ensureSignedIn()
         let snap = try await groups.whereField("inviteCode", isEqualTo: code).limit(to: 1).getDocuments()
         guard let doc = snap.documents.first, let group = Group(fs: doc.data()) else {
             throw RepositoryError.notFound
@@ -40,12 +42,14 @@ public actor FirestoreGroupRepository: GroupRepositoryProtocol {
     }
 
     public func fetchGroup(id: UUID) async throws -> Group {
+        await FirebaseAuthGate.shared.ensureSignedIn()
         let doc = try await groups.document(id.uuidString).getDocument()
         guard let data = doc.data(), let group = Group(fs: data) else { throw RepositoryError.notFound }
         return group
     }
 
     public func addMember(toGroup groupID: UUID, name: String, avatarColorHex: String) async throws -> Member {
+        await FirebaseAuthGate.shared.ensureSignedIn()
         let groupRef = groups.document(groupID.uuidString)
         let doc = try await groupRef.getDocument()
         guard let data = doc.data(), var group = Group(fs: data) else { throw RepositoryError.notFound }
@@ -57,6 +61,7 @@ public actor FirestoreGroupRepository: GroupRepositoryProtocol {
     }
 
     public func updateMemberName(_ memberID: UUID, name: String) async throws -> Member {
+        await FirebaseAuthGate.shared.ensureSignedIn()
         let ref = membersCol.document(memberID.uuidString)
         let doc = try await ref.getDocument()
         guard let data = doc.data(), var member = Member(fs: data) else { throw RepositoryError.notFound }
@@ -66,6 +71,7 @@ public actor FirestoreGroupRepository: GroupRepositoryProtocol {
     }
 
     public func updateMemberAccount(_ memberID: UUID, bankName: String, accountNumber: String) async throws -> Member {
+        await FirebaseAuthGate.shared.ensureSignedIn()
         let ref = membersCol.document(memberID.uuidString)
         let doc = try await ref.getDocument()
         guard let data = doc.data(), var member = Member(fs: data) else { throw RepositoryError.notFound }
@@ -76,11 +82,13 @@ public actor FirestoreGroupRepository: GroupRepositoryProtocol {
     }
 
     public func fetchMembers(ofGroup groupID: UUID) async throws -> [Member] {
+        await FirebaseAuthGate.shared.ensureSignedIn()
         let snap = try await membersCol.whereField("groupID", isEqualTo: groupID.uuidString).getDocuments()
         return snap.documents.compactMap { Member(fs: $0.data()) }.sorted { $0.joinedAt < $1.joinedAt }
     }
 
     public func removeMember(_ memberID: UUID) async throws {
+        await FirebaseAuthGate.shared.ensureSignedIn()
         let ref = membersCol.document(memberID.uuidString)
         let doc = try await ref.getDocument()
         guard let data = doc.data(), let member = Member(fs: data) else { throw RepositoryError.notFound }
@@ -94,6 +102,7 @@ public actor FirestoreGroupRepository: GroupRepositoryProtocol {
     }
 
     public func deleteGroup(_ groupID: UUID) async throws {
+        await FirebaseAuthGate.shared.ensureSignedIn()
         let gid = groupID.uuidString
         for col in ["members", "chores", "choreCompletions", "expenses", "settlements"] {
             let docs = try await db.collection(col).whereField("groupID", isEqualTo: gid).getDocuments()
@@ -103,6 +112,7 @@ public actor FirestoreGroupRepository: GroupRepositoryProtocol {
     }
 
     public func fetchAllGroups() async throws -> [Group] {
+        await FirebaseAuthGate.shared.ensureSignedIn()
         // PoC: 인증/멤버십 스코프가 없어 전체 groups 를 반환.
         let snap = try await groups.getDocuments()
         return snap.documents.compactMap { Group(fs: $0.data()) }

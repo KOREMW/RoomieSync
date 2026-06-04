@@ -30,6 +30,7 @@ struct HomeView: View {
                         .contentShape(Rectangle())
                         .onTapGesture { onOpenChores() }
                     weeklySettlementCard(vm)
+                    GroupNotesCard(groupID: groupID)
                     distributionCard(vm)
                 } else {
                     ProgressView().padding(Spacing.xxl)

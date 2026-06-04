@@ -39,4 +39,18 @@ public protocol GroupRepositoryProtocol: Sendable {
 
     /// 현재 사용자가 속한 모든 그룹 — 멀티 그룹 지원 (시안 ⑤ 통계 셀렉터 대비).
     func fetchAllGroups() async throws -> [Group]
+
+    // MARK: - 공지/메모 보드 (#13)
+
+    /// 그룹 공지/메모 전체 — 고정(상단) 후 최신순.
+    func fetchNotes(groupID: UUID) async throws -> [GroupNote]
+
+    /// 공지/메모 추가.
+    func addNote(groupID: UUID, authorMemberID: UUID, text: String) async throws -> GroupNote
+
+    /// 공지/메모 삭제.
+    func deleteNote(_ noteID: UUID) async throws
+
+    /// 공지/메모 고정 토글.
+    func setNotePinned(_ noteID: UUID, pinned: Bool) async throws -> GroupNote
 }

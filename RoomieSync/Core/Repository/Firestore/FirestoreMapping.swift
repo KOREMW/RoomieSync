@@ -89,6 +89,30 @@ extension Member {
     }
 }
 
+// MARK: - GroupNote
+
+extension GroupNote {
+    var fsDict: [String: Any] {
+        [
+            "id": id.uuidString,
+            "groupID": groupID.uuidString,
+            "authorMemberID": authorMemberID.uuidString,
+            "text": text,
+            "createdAt": FSMap.epoch(createdAt),
+            "isPinned": isPinned
+        ]
+    }
+    init?(fs d: [String: Any]) {
+        guard let id = FSMap.uuid(d["id"]),
+              let gid = FSMap.uuid(d["groupID"]),
+              let author = FSMap.uuid(d["authorMemberID"]),
+              let text = FSMap.str(d["text"]),
+              let created = FSMap.date(d["createdAt"]) else { return nil }
+        self.init(id: id, groupID: gid, authorMemberID: author, text: text,
+                  createdAt: created, isPinned: FSMap.bool(d["isPinned"]))
+    }
+}
+
 // MARK: - Chore
 
 extension Chore {

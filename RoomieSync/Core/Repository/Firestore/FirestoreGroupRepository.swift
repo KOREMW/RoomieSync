@@ -23,6 +23,7 @@ public actor FirestoreGroupRepository: GroupRepositoryProtocol {
     nonisolated(unsafe) private let db = Firestore.firestore()
     private var groups: CollectionReference { db.collection("groups") }
     private var membersCol: CollectionReference { db.collection("members") }
+    private var notesCol: CollectionReference { db.collection("notes") }
 
     public init() {}
 
@@ -140,7 +141,7 @@ public actor FirestoreGroupRepository: GroupRepositoryProtocol {
     public func deleteGroup(_ groupID: UUID) async throws {
         await FirebaseAuthGate.shared.ensureSignedIn()
         let gid = groupID.uuidString
-        for col in ["members", "chores", "choreCompletions", "expenses", "settlements"] {
+        for col in ["members", "chores", "choreCompletions", "expenses", "settlements", "notes"] {
             let docs = try await db.collection(col).whereField("groupID", isEqualTo: gid).getDocuments()
             for d in docs.documents { try await d.reference.delete() }
         }
@@ -152,6 +153,37 @@ public actor FirestoreGroupRepository: GroupRepositoryProtocol {
         // PoC: 인증/멤버십 스코프가 없어 전체 groups 를 반환.
         let snap = try await groups.getDocuments()
         return snap.documents.compactMap { Group(fs: $0.data()) }
+    }
+
+    // MARK: - 공지/메모 (#13)
+
+    public func fetchNotes(groupID: UUID) async throws -> [GroupNote] {
+        await FirebaseAuthGate.shared.ensureSignedIn()
+        let snap = try await notesCol.whereField("groupID", isEqualTo: groupID.uuidString).getDocuments()
+        return snap.documents.compactMap { GroupNote(fs: $0.data()) }
+            .sorted { ($0.isPinned ? 1 : 0, $0.createdAt) > ($1.isPinned ? 1 : 0, $1.createdAt) }
+    }
+
+    public func addNote(groupID: UUID, authorMemberID: UUID, text: String) async throws -> GroupNote {
+        await FirebaseAuthGate.shared.ensureSignedIn()
+        let note = GroupNote(groupID: groupID, authorMemberID: authorMemberID, text: text)
+        try await notesCol.document(note.id.uuidString).setData(note.fsDict)
+        return note
+    }
+
+    public func deleteNote(_ noteID: UUID) async throws {
+        await FirebaseAuthGate.shared.ensureSignedIn()
+        try await notesCol.document(noteID.uuidString).delete()
+    }
+
+    public func setNotePinned(_ noteID: UUID, pinned: Bool) async throws -> GroupNote {
+        await FirebaseAuthGate.shared.ensureSignedIn()
+        let ref = notesCol.document(noteID.uuidString)
+        let doc = try await ref.getDocument()
+        guard let data = doc.data(), var note = GroupNote(fs: data) else { throw RepositoryError.notFound }
+        try await ref.updateData(["isPinned": pinned])
+        note.isPinned = pinned
+        return note
     }
 }
 #endif

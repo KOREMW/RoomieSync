@@ -53,6 +53,10 @@ service cloud.firestore {
     match /settlements/{id} {
       allow read, write: if signedIn();
     }
+    match /notes/{id} {
+      allow read, delete: if signedIn();
+      allow create, update: if signedIn() && okString('text', 500);
+    }
 
     // 그 외 경로는 모두 거부
     match /{document=**} {

@@ -111,6 +111,12 @@ public actor SwiftDataGroupRepository: GroupRepositoryProtocol {
     public func deleteGroup(_ groupID: UUID) async throws {
         let group = try fetchGroupEntity(id: groupID)
         modelContext.delete(group)
+        // 메모는 그룹 관계가 없으므로 groupID 로 직접 정리.
+        let gid = groupID
+        let notePredicate = #Predicate<NoteEntity> { $0.groupID == gid }
+        for note in (try? modelContext.fetch(FetchDescriptor<NoteEntity>(predicate: notePredicate))) ?? [] {
+            modelContext.delete(note)
+        }
         do { try modelContext.save() } catch {
             throw RepositoryError.persistenceFailure(underlying: error.localizedDescription)
         }
@@ -121,6 +127,48 @@ public actor SwiftDataGroupRepository: GroupRepositoryProtocol {
             sortBy: [SortDescriptor(\.createdAt, order: .reverse)]
         )
         return try modelContext.fetch(descriptor).map { $0.toDomain() }
+    }
+
+    // MARK: - 공지/메모 (#13)
+
+    public func fetchNotes(groupID: UUID) async throws -> [GroupNote] {
+        let predicate = #Predicate<NoteEntity> { $0.groupID == groupID }
+        let descriptor = FetchDescriptor<NoteEntity>(predicate: predicate)
+        return try modelContext.fetch(descriptor)
+            .map { $0.toDomain() }
+            .sorted { ($0.isPinned ? 1 : 0, $0.createdAt) > ($1.isPinned ? 1 : 0, $1.createdAt) }
+    }
+
+    public func addNote(groupID: UUID, authorMemberID: UUID, text: String) async throws -> GroupNote {
+        let entity = NoteEntity(groupID: groupID, authorMemberID: authorMemberID, text: text)
+        modelContext.insert(entity)
+        do { try modelContext.save() } catch {
+            throw RepositoryError.persistenceFailure(underlying: error.localizedDescription)
+        }
+        return entity.toDomain()
+    }
+
+    public func deleteNote(_ noteID: UUID) async throws {
+        let predicate = #Predicate<NoteEntity> { $0.id == noteID }
+        guard let entity = try modelContext.fetch(FetchDescriptor<NoteEntity>(predicate: predicate)).first else {
+            throw RepositoryError.notFound
+        }
+        modelContext.delete(entity)
+        do { try modelContext.save() } catch {
+            throw RepositoryError.persistenceFailure(underlying: error.localizedDescription)
+        }
+    }
+
+    public func setNotePinned(_ noteID: UUID, pinned: Bool) async throws -> GroupNote {
+        let predicate = #Predicate<NoteEntity> { $0.id == noteID }
+        guard let entity = try modelContext.fetch(FetchDescriptor<NoteEntity>(predicate: predicate)).first else {
+            throw RepositoryError.notFound
+        }
+        entity.isPinned = pinned
+        do { try modelContext.save() } catch {
+            throw RepositoryError.persistenceFailure(underlying: error.localizedDescription)
+        }
+        return entity.toDomain()
     }
 
     // MARK: - Private

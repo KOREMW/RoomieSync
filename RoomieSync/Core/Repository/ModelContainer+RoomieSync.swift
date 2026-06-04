@@ -19,7 +19,8 @@ public enum RoomieSyncSchema {
         ChoreEntity.self,
         ChoreCompletionEntity.self,
         ExpenseEntity.self,
-        SettlementEntity.self
+        SettlementEntity.self,
+        NoteEntity.self
     ]
 }
 

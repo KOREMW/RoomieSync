@@ -15,6 +15,7 @@ import Foundation
 public actor InMemoryGroupRepository: GroupRepositoryProtocol {
     private var groups: [UUID: Group] = [:]
     private var members: [UUID: Member] = [:]
+    private var notes: [UUID: GroupNote] = [:]
 
     public init(seed: [(Group, [Member])] = []) {
         for (g, ms) in seed {
@@ -94,9 +95,36 @@ public actor InMemoryGroupRepository: GroupRepositoryProtocol {
         guard groups[groupID] != nil else { throw RepositoryError.notFound }
         groups[groupID] = nil
         members = members.filter { $0.value.groupID != groupID }
+        notes = notes.filter { $0.value.groupID != groupID }
     }
 
     public func fetchAllGroups() async throws -> [Group] {
         groups.values.sorted { $0.createdAt > $1.createdAt }
+    }
+
+    // MARK: - 공지/메모 (#13)
+
+    public func fetchNotes(groupID: UUID) async throws -> [GroupNote] {
+        notes.values
+            .filter { $0.groupID == groupID }
+            .sorted { ($0.isPinned ? 1 : 0, $0.createdAt) > ($1.isPinned ? 1 : 0, $1.createdAt) }
+    }
+
+    public func addNote(groupID: UUID, authorMemberID: UUID, text: String) async throws -> GroupNote {
+        let note = GroupNote(groupID: groupID, authorMemberID: authorMemberID, text: text)
+        notes[note.id] = note
+        return note
+    }
+
+    public func deleteNote(_ noteID: UUID) async throws {
+        guard notes[noteID] != nil else { throw RepositoryError.notFound }
+        notes[noteID] = nil
+    }
+
+    public func setNotePinned(_ noteID: UUID, pinned: Bool) async throws -> GroupNote {
+        guard var note = notes[noteID] else { throw RepositoryError.notFound }
+        note.isPinned = pinned
+        notes[noteID] = note
+        return note
     }
 }

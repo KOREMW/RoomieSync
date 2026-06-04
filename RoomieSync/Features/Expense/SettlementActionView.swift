@@ -39,6 +39,7 @@ struct SettlementActionView: View {
     @State private var pendingExpenseIDs: [UUID] = []
     @State private var isLoading = true
     @State private var copied = false
+    @State private var errorMessage: String? = nil
 
     private var me: Member? { meID.flatMap { membersByID[$0] } }
     private var toMe: [Settlement] { settlements.filter { $0.toMemberID == meID } }      // 받을 돈
@@ -71,6 +72,14 @@ struct SettlementActionView: View {
             .navigationTitle("정산하기")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("닫기") { dismiss() } } }
+            .alert("정산 처리 실패", isPresented: Binding(
+                get: { errorMessage != nil },
+                set: { if !$0 { errorMessage = nil } }
+            )) {
+                Button("확인", role: .cancel) { errorMessage = nil }
+            } message: {
+                Text(errorMessage ?? "")
+            }
             .task { await load() }
         }
     }
@@ -192,7 +201,8 @@ struct SettlementActionView: View {
             HapticManager.shared.success()
             dismiss()
         } catch {
-            // 무시 — 다음 진입 시 재시도
+            HapticManager.shared.error()
+            errorMessage = "정산 완료 처리에 실패했어요. 네트워크를 확인하고 다시 시도해주세요.\n(\(CKErrorMapper.userMessage(for: error)))"
         }
     }
 }

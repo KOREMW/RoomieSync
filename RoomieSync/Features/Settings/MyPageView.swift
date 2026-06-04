@@ -43,6 +43,9 @@ struct MyPageView: View {
     @AppStorage(AppKeys.Storage.currentGroupID) private var currentGroupIDString: String = ""
     @State private var showLeaveConfirm: Bool = false
 
+    // 실패 피드백 (조용한 실패 방지)
+    @State private var errorMessage: String? = nil
+
     // 알림 (당번 알림은 가사별로 이동 → 여기선 그룹 알림만)
     @State private var memberCompletionOn: Bool = NotificationService.shared.userPrefers(.memberCompletion)
     @State private var expenseAddedOn: Bool = NotificationService.shared.userPrefers(.expenseAdded)
@@ -201,6 +204,14 @@ struct MyPageView: View {
         } message: {
             Text("다른 모임이 있으면 그 모임으로 이동하고, 없으면 시작 화면으로 돌아갑니다.")
         }
+        .alert("문제가 발생했어요", isPresented: Binding(
+            get: { errorMessage != nil },
+            set: { if !$0 { errorMessage = nil } }
+        )) {
+            Button("확인", role: .cancel) { errorMessage = nil }
+        } message: {
+            Text(errorMessage ?? "")
+        }
         .task {
             let settings = await UNUserNotificationCenter.current().notificationSettings()
             permissionGranted = settings.authorizationStatus == .authorized
@@ -211,19 +222,23 @@ struct MyPageView: View {
     @MainActor
     private func leaveGroup() async {
         let repo = repositories.group
-        // 1) 내 멤버 제거 (myMemberID 가 비어도 멤버 목록 첫 멤버로 보강)
-        let before = (try? await repo.fetchMembers(ofGroup: groupID)) ?? []
-        if let id = myMemberID ?? before.first?.id {
-            try? await repo.removeMember(id)
+        do {
+            // 1) 내 멤버 제거 (myMemberID 가 비어도 멤버 목록 첫 멤버로 보강)
+            let before = try await repo.fetchMembers(ofGroup: groupID)
+            if let id = myMemberID ?? before.first?.id {
+                try await repo.removeMember(id)
+            }
+            // 2) 남은 멤버가 없으면 그룹 자체 삭제 → 모임 목록에 남지 않도록
+            let remaining = try await repo.fetchMembers(ofGroup: groupID)
+            if remaining.isEmpty {
+                try await repo.deleteGroup(groupID)
+            }
+            // 3) 다른 모임이 있으면 그 모임의 홈으로, 없으면 시작 화면("")
+            let others = (try? await repo.fetchAllGroups())?.filter { $0.id != groupID } ?? []
+            currentGroupIDString = others.first?.id.uuidString ?? ""
+        } catch {
+            errorMessage = "그룹 나가기에 실패했어요. 네트워크를 확인하고 다시 시도해주세요.\n(\(CKErrorMapper.userMessage(for: error)))"
         }
-        // 2) 남은 멤버가 없으면 그룹 자체 삭제 → 모임 목록에 남지 않도록
-        let remaining = (try? await repo.fetchMembers(ofGroup: groupID)) ?? []
-        if remaining.isEmpty {
-            try? await repo.deleteGroup(groupID)
-        }
-        // 3) 다른 모임이 있으면 그 모임의 홈으로, 없으면 시작 화면("")
-        let others = (try? await repo.fetchAllGroups())?.filter { $0.id != groupID } ?? []
-        currentGroupIDString = others.first?.id.uuidString ?? ""
     }
 
     @MainActor
@@ -256,7 +271,8 @@ struct MyPageView: View {
             nameSaved = true
             HapticManager.shared.success()
         } catch {
-            // 실패 시 저장 상태 미표시
+            HapticManager.shared.error()
+            errorMessage = "이름 저장에 실패했어요.\n(\(CKErrorMapper.userMessage(for: error)))"
         }
     }
 
@@ -275,7 +291,8 @@ struct MyPageView: View {
             revealAccount = false
             HapticManager.shared.success()
         } catch {
-            // 실패 시 저장 상태 미표시
+            HapticManager.shared.error()
+            errorMessage = "계좌 저장에 실패했어요.\n(\(CKErrorMapper.userMessage(for: error)))"
         }
     }
 }

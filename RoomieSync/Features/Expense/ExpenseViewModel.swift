@@ -108,8 +108,36 @@ public final class ExpenseViewModel {
         do {
             members = try await groupRepo.fetchMembers(ofGroup: groupID)
             expenses = try await expenseRepo.fetchExpenses(groupID: groupID, includeSettled: true)
+            await generateDueRecurringExpenses()
         } catch {
             errorMessage = CKErrorMapper.userMessage(for: error)
+        }
+    }
+
+    /// 반복 지출(#8) — 이번 달 생성 예정 템플릿을 실제 지출로 만든다(기기 로컬 템플릿 기준).
+    private func generateDueRecurringExpenses() async {
+        var templates = ExpenseTemplateStore.load(groupID)
+        let due = RecurringExpenseGenerator.due(templates: templates)
+        guard !due.isEmpty else { return }
+        let ym = RecurringExpenseGenerator.yearMonth(of: .now)
+        var createdAny = false
+        for (template, date) in due {
+            let expense = Expense(
+                groupID: groupID, title: template.title, amount: template.amount,
+                paidByMemberID: template.paidByMemberID,
+                participantMemberIDs: template.participantMemberIDs,
+                date: date, category: template.category, memo: template.memo
+            )
+            if (try? await expenseRepo.createExpense(expense)) != nil {
+                createdAny = true
+                if let idx = templates.firstIndex(where: { $0.id == template.id }) {
+                    templates[idx].lastGeneratedYearMonth = ym
+                }
+            }
+        }
+        ExpenseTemplateStore.save(groupID, templates)
+        if createdAny {
+            expenses = (try? await expenseRepo.fetchExpenses(groupID: groupID, includeSettled: true)) ?? expenses
         }
     }
 

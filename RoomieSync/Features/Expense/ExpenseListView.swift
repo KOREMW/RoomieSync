@@ -65,6 +65,13 @@ struct ExpenseListView: View {
             if let vm = viewModel {
                 ToolbarItem(placement: .topBarTrailing) { sortMenu(vm) }
             }
+            ToolbarItem(placement: .topBarTrailing) {
+                NavigationLink {
+                    RecurringExpensesView(groupID: groupID)
+                } label: {
+                    Image(systemName: "repeat")
+                }
+            }
             ToolbarItem(placement: .topBarLeading) {
                 NavigationLink {
                     SettlementHistoryView(groupID: groupID)

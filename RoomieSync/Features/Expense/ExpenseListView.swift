@@ -24,14 +24,23 @@ struct ExpenseListView: View {
                     monthTotalCard(vm)
                     filterChips(vm)
                     if vm.filtered.isEmpty {
-                        EmptyStateView(
-                            icon: "creditcard",
-                            title: "지출이 없어요",
-                            message: "휴지·세제·공과금 등 공동 지출을\n등록하면 자동으로 정산돼요.",
-                            actionTitle: "+ 지출 추가",
-                            action: { showAddSheet = true }
-                        )
-                        .frame(minHeight: 360)
+                        if vm.isNarrowed {
+                            ContentUnavailableView(
+                                "결과가 없어요",
+                                systemImage: "magnifyingglass",
+                                description: Text("검색어나 필터를 바꿔보세요.")
+                            )
+                            .frame(minHeight: 360)
+                        } else {
+                            EmptyStateView(
+                                icon: "creditcard",
+                                title: "지출이 없어요",
+                                message: "휴지·세제·공과금 등 공동 지출을\n등록하면 자동으로 정산돼요.",
+                                actionTitle: "+ 지출 추가",
+                                action: { showAddSheet = true }
+                            )
+                            .frame(minHeight: 360)
+                        }
                     } else {
                         ForEach(vm.filtered) { exp in
                             Button { editingExpense = exp } label: {
@@ -50,6 +59,13 @@ struct ExpenseListView: View {
         .background(Tokens.surface.ignoresSafeArea())
         .navigationTitle("공동 지출")
         .navigationBarTitleDisplayMode(.inline)
+        .searchable(text: searchBinding, placement: .navigationBarDrawer(displayMode: .always),
+                    prompt: "제목·메모·결제자 검색")
+        .toolbar {
+            if let vm = viewModel {
+                ToolbarItem(placement: .topBarTrailing) { sortMenu(vm) }
+            }
+        }
         .overlay(alignment: .bottomTrailing) {
             if let vm = viewModel, !vm.filtered.isEmpty {
                 RoomieButton("지출 추가", icon: "plus") {
@@ -77,6 +93,24 @@ struct ExpenseListView: View {
                 viewModel = ExpenseViewModel(groupID: groupID, repositories: repositories)
             }
             await viewModel?.load()
+        }
+    }
+
+    // MARK: - 검색 / 정렬
+
+    private var searchBinding: Binding<String> {
+        Binding(get: { viewModel?.searchText ?? "" },
+                set: { viewModel?.searchText = $0 })
+    }
+
+    @ViewBuilder
+    private func sortMenu(_ vm: ExpenseViewModel) -> some View {
+        Menu {
+            Picker("정렬", selection: Binding(get: { vm.sort }, set: { vm.sort = $0 })) {
+                ForEach(ExpenseSort.allCases) { Text($0.label).tag($0) }
+            }
+        } label: {
+            Image(systemName: "arrow.up.arrow.down")
         }
     }
 

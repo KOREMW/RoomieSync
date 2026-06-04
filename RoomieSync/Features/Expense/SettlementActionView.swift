@@ -88,11 +88,13 @@ struct SettlementActionView: View {
                 }
             }
             if let me, me.hasAccount {
+                let shown = BankAccountFormatter.format(me.accountNumber ?? "", bank: me.bankName ?? "")
                 Button {
+                    // 복사·송금은 숫자만(은행 앱 호환). 표시만 하이픈.
                     copySensitive(PaymentLink.accountString(bank: me.bankName ?? "", account: me.accountNumber ?? ""))
                     copied = true
                 } label: {
-                    Label(copied ? "내 계좌 복사됨" : "내 계좌 복사 (\(me.bankName ?? "") \(me.accountNumber ?? ""))",
+                    Label(copied ? "내 계좌 복사됨" : "내 계좌 복사 (\(me.bankName ?? "") \(shown))",
                           systemImage: copied ? "checkmark" : "doc.on.doc")
                 }
             } else {
@@ -117,7 +119,7 @@ struct SettlementActionView: View {
                             .foregroundStyle(Tokens.payCardText)
                     }
                     if let payee, payee.hasAccount {
-                        Text("\(payee.bankName ?? "") \(payee.accountNumber ?? "")")
+                        Text("\(payee.bankName ?? "") \(BankAccountFormatter.format(payee.accountNumber ?? "", bank: payee.bankName ?? ""))")
                             .font(Typo.caption()).foregroundStyle(Tokens.textSecondary)
                         HStack(spacing: Spacing.s) {
                             Button {

@@ -22,6 +22,19 @@ public enum ExpenseFilter: String, CaseIterable, Identifiable {
     }
 }
 
+public enum ExpenseSort: String, CaseIterable, Identifiable {
+    case dateDesc, dateAsc, amountDesc, amountAsc
+    public var id: String { rawValue }
+    public var label: String {
+        switch self {
+        case .dateDesc:   return "최신순"
+        case .dateAsc:    return "오래된순"
+        case .amountDesc: return "금액 높은순"
+        case .amountAsc:  return "금액 낮은순"
+        }
+    }
+}
+
 @MainActor
 @Observable
 public final class ExpenseViewModel {
@@ -33,6 +46,8 @@ public final class ExpenseViewModel {
     public private(set) var expenses: [Expense] = []
     public private(set) var members: [Member] = []
     public var filter: ExpenseFilter = .all
+    public var sort: ExpenseSort = .dateDesc
+    public var searchText: String = ""
     public private(set) var isLoading: Bool = false
     public private(set) var errorMessage: String? = nil
 
@@ -42,12 +57,39 @@ public final class ExpenseViewModel {
         self.expenseRepo = repositories.expense
     }
 
+    /// 검색어가 입력되어 있거나 기본(전체) 필터가 아닌지 — 빈 결과 메시지 분기에 사용.
+    public var isNarrowed: Bool {
+        filter != .all || !searchText.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
     public var filtered: [Expense] {
+        var items: [Expense]
         switch filter {
-        case .all:     return expenses
-        case .pending: return expenses.filter { !$0.isSettled }
-        case .settled: return expenses.filter { $0.isSettled }
+        case .all:     items = expenses
+        case .pending: items = expenses.filter { !$0.isSettled }
+        case .settled: items = expenses.filter { $0.isSettled }
         }
+
+        // 검색: 제목·메모·결제자 이름
+        let q = searchText.trimmingCharacters(in: .whitespaces).lowercased()
+        if !q.isEmpty {
+            items = items.filter { exp in
+                if exp.title.lowercased().contains(q) { return true }
+                if let memo = exp.memo, memo.lowercased().contains(q) { return true }
+                if let payer = members.first(where: { $0.id == exp.paidByMemberID }),
+                   payer.name.lowercased().contains(q) { return true }
+                return false
+            }
+        }
+
+        // 정렬
+        switch sort {
+        case .dateDesc:   items.sort { $0.date > $1.date }
+        case .dateAsc:    items.sort { $0.date < $1.date }
+        case .amountDesc: items.sort { $0.amount > $1.amount }
+        case .amountAsc:  items.sort { $0.amount < $1.amount }
+        }
+        return items
     }
 
     public var totalThisMonth: Decimal {

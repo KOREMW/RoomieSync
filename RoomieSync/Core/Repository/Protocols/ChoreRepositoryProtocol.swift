@@ -19,7 +19,8 @@ public protocol ChoreRepositoryProtocol: Sendable {
         cycle: ChoreCycle,
         weekdays: [Int],
         anchorDate: Date?,
-        rotationMemberIDs: [UUID]
+        rotationMemberIDs: [UUID],
+        difficulty: ChoreDifficulty
     ) async throws -> Chore
 
     /// 가사 수정 — 제목·아이콘·주기·요일 변경 (마이페이지/가사 편집).

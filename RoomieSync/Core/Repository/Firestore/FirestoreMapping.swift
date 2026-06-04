@@ -103,7 +103,8 @@ extension Chore {
             "nextDueDate": FSMap.epoch(nextDueDate),
             "rotationStartedAt": FSMap.epoch(rotationStartedAt),
             "rotationMemberIDs": FSMap.ids(rotationMemberIDs),
-            "weekdays": weekdays
+            "weekdays": weekdays,
+            "difficulty": difficulty.rawValue
         ]
         if let anchorDate { dict["anchorDate"] = FSMap.epoch(anchorDate) }
         return dict
@@ -122,7 +123,8 @@ extension Chore {
                   currentAssigneeID: assignee, nextDueDate: due, rotationStartedAt: started,
                   rotationMemberIDs: FSMap.uuids(d["rotationMemberIDs"]),
                   weekdays: FSMap.ints(d["weekdays"]),
-                  anchorDate: FSMap.date(d["anchorDate"]))
+                  anchorDate: FSMap.date(d["anchorDate"]),
+                  difficulty: ChoreDifficulty(rawValue: (d["difficulty"] as? Int) ?? 2) ?? .normal)
     }
 }
 

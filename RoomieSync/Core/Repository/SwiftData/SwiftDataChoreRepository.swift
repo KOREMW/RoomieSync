@@ -20,7 +20,8 @@ public actor SwiftDataChoreRepository: ChoreRepositoryProtocol {
         cycle: ChoreCycle,
         weekdays: [Int],
         anchorDate: Date?,
-        rotationMemberIDs: [UUID]
+        rotationMemberIDs: [UUID],
+        difficulty: ChoreDifficulty
     ) async throws -> Chore {
         guard let first = rotationMemberIDs.first else {
             throw RepositoryError.invalidInput(reason: "로테이션 멤버가 0명입니다")
@@ -37,6 +38,7 @@ public actor SwiftDataChoreRepository: ChoreRepositoryProtocol {
         )
         chore.group = group
         chore.anchorDate = anchorDate
+        chore.difficultyRaw = difficulty.rawValue
         if let data = try? JSONEncoder().encode(rotationMemberIDs),
            let json = String(data: data, encoding: .utf8) {
             chore.rotationMemberIDsJSON = json

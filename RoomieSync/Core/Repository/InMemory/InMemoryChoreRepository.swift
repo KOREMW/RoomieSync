@@ -28,7 +28,8 @@ public actor InMemoryChoreRepository: ChoreRepositoryProtocol {
         cycle: ChoreCycle,
         weekdays: [Int],
         anchorDate: Date?,
-        rotationMemberIDs: [UUID]
+        rotationMemberIDs: [UUID],
+        difficulty: ChoreDifficulty
     ) async throws -> Chore {
         guard let first = rotationMemberIDs.first else {
             throw RepositoryError.invalidInput(reason: "로테이션 멤버가 0명입니다")
@@ -43,7 +44,8 @@ public actor InMemoryChoreRepository: ChoreRepositoryProtocol {
             nextDueDate: due,
             rotationMemberIDs: rotationMemberIDs,
             weekdays: weekdays,
-            anchorDate: anchorDate
+            anchorDate: anchorDate,
+            difficulty: difficulty
         )
         chores[chore.id] = chore
         return chore

@@ -19,6 +19,7 @@ struct ChoreAddSheet: View {
     @State private var cycle: ChoreCycle = .daily
     @State private var weekdays: Set<Int> = []          // 1=일 … 7=토
     @State private var pickedDate: Date = .now          // 매 월 / 선택용 캘린더 날짜
+    @State private var difficulty: ChoreDifficulty = .normal
     @State private var notifyMorning: Bool = true
     @State private var notifyEvening: Bool = true
     @State private var morningTime: Date = Self.time(9, 0)
@@ -64,6 +65,17 @@ struct ChoreAddSheet: View {
                     case .once:      calendarPicker(caption: "이 날짜에 1회만 진행돼요")
                     case .daily:     EmptyView()
                     }
+                }
+                Section("난이도") {
+                    Picker("난이도", selection: $difficulty) {
+                        ForEach(ChoreDifficulty.allCases, id: \.self) { d in
+                            Text(d.displayName).tag(d)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    Text("난이도가 높을수록 통계의 공정지수에 더 큰 부담으로 반영돼요.")
+                        .font(Typo.caption())
+                        .foregroundStyle(Tokens.textSecondary)
                 }
                 Section("이 가사 알림") {
                     Toggle("오전 당번 알림", isOn: $notifyMorning)
@@ -153,6 +165,7 @@ struct ChoreAddSheet: View {
         selectedIcon = c.icon
         cycle = c.cycleType
         weekdays = Set(c.weekdays)
+        difficulty = c.difficulty
         if let a = c.anchorDate { pickedDate = a }
         let ns = NotificationService.shared
         notifyMorning = ns.userPrefersChore(.morningDuty, choreID: c.id)
@@ -176,12 +189,14 @@ struct ChoreAddSheet: View {
             updated.cycleType = cycle
             updated.weekdays = days
             updated.anchorDate = anchor
+            updated.difficulty = difficulty
             ok = await viewModel.updateChore(updated, notifyMorning: notifyMorning, notifyEvening: notifyEvening,
                                              morningMinutes: mMin, eveningMinutes: eMin)
         } else {
             ok = await viewModel.addChore(
                 title: InputValidator.choreTitle(title),
                 icon: selectedIcon, cycle: cycle, weekdays: days, anchorDate: anchor,
+                difficulty: difficulty,
                 notifyMorning: notifyMorning, notifyEvening: notifyEvening,
                 morningMinutes: mMin, eveningMinutes: eMin
             )

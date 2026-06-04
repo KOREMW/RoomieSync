@@ -26,7 +26,8 @@ public actor FirestoreChoreRepository: ChoreRepositoryProtocol {
         cycle: ChoreCycle,
         weekdays: [Int],
         anchorDate: Date?,
-        rotationMemberIDs: [UUID]
+        rotationMemberIDs: [UUID],
+        difficulty: ChoreDifficulty
     ) async throws -> Chore {
         await FirebaseAuthGate.shared.ensureSignedIn()
         guard let first = rotationMemberIDs.first else {
@@ -35,7 +36,8 @@ public actor FirestoreChoreRepository: ChoreRepositoryProtocol {
         let due = (cycle == .once || cycle == .monthly) ? (anchorDate ?? .now) : nextDate(from: .now, cycle: cycle)
         let chore = Chore(groupID: groupID, title: title, icon: icon, cycleType: cycle,
                           currentAssigneeID: first, nextDueDate: due,
-                          rotationMemberIDs: rotationMemberIDs, weekdays: weekdays, anchorDate: anchorDate)
+                          rotationMemberIDs: rotationMemberIDs, weekdays: weekdays, anchorDate: anchorDate,
+                          difficulty: difficulty)
         try await choresCol.document(chore.id.uuidString).setData(chore.fsDict)
         return chore
     }

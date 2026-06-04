@@ -27,6 +27,8 @@ public final class ChoreEntity {
     public var weekdaysJSON: String = "[]"
     /// 선택(once)/매월(monthly) 기준 날짜.
     public var anchorDate: Date? = nil
+    /// 난이도(부담 가중치). ChoreDifficulty.rawValue(1~3). 기본 보통(2).
+    public var difficultyRaw: Int = ChoreDifficulty.normal.rawValue
 
     @Relationship(deleteRule: .nullify)
     public var group: GroupEntity?
@@ -82,7 +84,8 @@ public extension ChoreEntity {
                       let arr = try? JSONDecoder().decode([Int].self, from: data) else { return [] }
                 return arr
             }(),
-            anchorDate: anchorDate
+            anchorDate: anchorDate,
+            difficulty: ChoreDifficulty(rawValue: difficultyRaw) ?? .normal
         )
     }
 
@@ -102,5 +105,6 @@ public extension ChoreEntity {
             self.weekdaysJSON = json
         }
         self.anchorDate = domain.anchorDate
+        self.difficultyRaw = domain.difficulty.rawValue
     }
 }

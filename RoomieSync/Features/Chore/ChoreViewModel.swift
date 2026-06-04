@@ -92,6 +92,7 @@ public final class ChoreViewModel {
 
     public func addChore(
         title: String, icon: String, cycle: ChoreCycle, weekdays: [Int], anchorDate: Date? = nil,
+        difficulty: ChoreDifficulty = .normal,
         notifyMorning: Bool = true, notifyEvening: Bool = true,
         morningMinutes: Int = 540, eveningMinutes: Int = 1260
     ) async -> Bool {
@@ -103,7 +104,8 @@ public final class ChoreViewModel {
                 cycle: cycle,
                 weekdays: weekdays,
                 anchorDate: anchorDate,
-                rotationMemberIDs: members.map(\.id)
+                rotationMemberIDs: members.map(\.id),
+                difficulty: difficulty
             )
             applyChoreNotifications(chore: chore, morning: notifyMorning, evening: notifyEvening,
                                     morningMinutes: morningMinutes, eveningMinutes: eveningMinutes)

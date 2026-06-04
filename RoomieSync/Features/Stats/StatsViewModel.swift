@@ -79,21 +79,28 @@ public final class StatsViewModel {
 
             // 완료 기록은 전체를 한 번에 받아 30일 통계·게이미피케이션에 함께 사용.
             let allCompletions = try await choreRepo.fetchAllCompletions(groupID: groupID, since: nil)
+            // 난이도 가중을 위해 가사별 점수 맵 (choreID → points)
+            let chores = try await choreRepo.fetchChores(groupID: groupID)
+            let pointsByChore = Dictionary(uniqueKeysWithValues: chores.map { ($0.id, $0.difficulty.points) })
 
             // 가사 완료 횟수 — 지난 30일
             let monthAgo = Calendar.current.date(byAdding: .day, value: -30, to: .now) ?? .now
             let completions = allCompletions.filter { $0.completedAt >= monthAgo }
-            var counts: [UUID: Int] = [:]
-            for c in completions { counts[c.memberID, default: 0] += 1 }
+            var counts: [UUID: Int] = [:]   // 실제 완료 횟수(막대/MVP용)
+            var burden: [UUID: Int] = [:]   // 난이도 가중 점수(공정지수용)
+            for c in completions {
+                counts[c.memberID, default: 0] += 1
+                burden[c.memberID, default: 0] += (pointsByChore[c.choreID] ?? ChoreDifficulty.normal.points)
+            }
             memberCounts = members
                 .map { m in
                     MemberChoreCount(member: m, count: counts[m.id] ?? 0, isCurrentUser: m.id == myID)
                 }
                 .sorted { $0.count > $1.count }
 
-            // 공정 지수 — min(완료횟수) / max(완료횟수) × 100
-            // 계획서 1.4 정의 그대로
-            let nonZero = counts.values.filter { $0 > 0 }
+            // 공정 지수 — 난이도 가중 부담(burden) 기준 min/max × 100.
+            // 횟수가 같아도 어려운 가사를 더 많이 한 사람의 부담이 크게 반영된다.
+            let nonZero = burden.values.filter { $0 > 0 }
             if let mn = nonZero.min(), let mx = nonZero.max(), mx > 0 {
                 fairnessIndex = Int((Double(mn) / Double(mx)) * 100)
             } else {

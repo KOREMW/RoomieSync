@@ -37,6 +37,32 @@ public enum ChoreCycle: String, Hashable, Sendable, Codable, CaseIterable {
     }
 }
 
+/// 가사 난이도/부담 가중치. 공정지수를 '횟수'가 아닌 '부담량(점수)'으로 계산하는 데 쓴다.
+public enum ChoreDifficulty: Int, Hashable, Sendable, Codable, CaseIterable {
+    case easy = 1       // 쉬움 (1점)
+    case normal = 2     // 보통 (2점)
+    case hard = 3       // 어려움 (3점)
+
+    public var displayName: String {
+        switch self {
+        case .easy:   return "쉬움"
+        case .normal: return "보통"
+        case .hard:   return "어려움"
+        }
+    }
+
+    /// 공정지수 가중 점수.
+    public var points: Int { rawValue }
+
+    public var icon: String {
+        switch self {
+        case .easy:   return "gauge.with.dots.needle.0percent"
+        case .normal: return "gauge.with.dots.needle.50percent"
+        case .hard:   return "gauge.with.dots.needle.100percent"
+        }
+    }
+}
+
 /// 가사 항목. currentAssigneeID 가 다음 차례 멤버를 가리키며, 완료 체크 시 다음 멤버로 회전.
 public struct Chore: Identifiable, Hashable, Sendable, Codable {
     public let id: UUID
@@ -55,6 +81,8 @@ public struct Chore: Identifiable, Hashable, Sendable, Codable {
     public var weekdays: [Int]
     /// 선택(once): 1회 진행 날짜. 매 월(monthly): 매월 반복할 기준 날짜(일자 사용). 그 외 nil.
     public var anchorDate: Date?
+    /// 난이도(부담 가중치). 기본 보통.
+    public var difficulty: ChoreDifficulty
 
     public init(
         id: UUID = UUID(),
@@ -67,7 +95,8 @@ public struct Chore: Identifiable, Hashable, Sendable, Codable {
         rotationStartedAt: Date = .now,
         rotationMemberIDs: [UUID],
         weekdays: [Int] = [],
-        anchorDate: Date? = nil
+        anchorDate: Date? = nil,
+        difficulty: ChoreDifficulty = .normal
     ) {
         self.id = id
         self.groupID = groupID
@@ -80,6 +109,24 @@ public struct Chore: Identifiable, Hashable, Sendable, Codable {
         self.rotationMemberIDs = rotationMemberIDs
         self.weekdays = weekdays
         self.anchorDate = anchorDate
+        self.difficulty = difficulty
+    }
+
+    /// 구버전 데이터(난이도 키 없음) 디코딩 시 보통으로 기본값 처리.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try c.decode(UUID.self, forKey: .id)
+        self.groupID = try c.decode(UUID.self, forKey: .groupID)
+        self.title = try c.decode(String.self, forKey: .title)
+        self.icon = try c.decode(String.self, forKey: .icon)
+        self.cycleType = try c.decode(ChoreCycle.self, forKey: .cycleType)
+        self.currentAssigneeID = try c.decode(UUID.self, forKey: .currentAssigneeID)
+        self.nextDueDate = try c.decode(Date.self, forKey: .nextDueDate)
+        self.rotationStartedAt = try c.decode(Date.self, forKey: .rotationStartedAt)
+        self.rotationMemberIDs = try c.decode([UUID].self, forKey: .rotationMemberIDs)
+        self.weekdays = try c.decodeIfPresent([Int].self, forKey: .weekdays) ?? []
+        self.anchorDate = try c.decodeIfPresent(Date.self, forKey: .anchorDate)
+        self.difficulty = try c.decodeIfPresent(ChoreDifficulty.self, forKey: .difficulty) ?? .normal
     }
 
     /// 주간 요일 한국어 요약 (예: "월·수·금"). 비어있으면 빈 문자열.

@@ -36,13 +36,17 @@ service cloud.firestore {
         && okString('bankName', 30) && okString('accountNumber', 40);
     }
     match /chores/{id} {
-      allow read, write: if signedIn() && okString('title', 60) && okString('icon', 16);
+      // 읽기(Listen)에는 request.resource 가 없으므로 okString 가드를 걸면 안 된다.
+      // 쓰기에만 길이 가드 적용.
+      allow read: if signedIn();
+      allow write: if signedIn() && okString('title', 60) && okString('icon', 16);
     }
     match /choreCompletions/{id} {
       allow read, write: if signedIn();
     }
     match /expenses/{id} {
-      allow read, write: if signedIn() && okString('title', 60) && okString('memo', 400);
+      allow read: if signedIn();
+      allow write: if signedIn() && okString('title', 60) && okString('memo', 400);
     }
     match /settlements/{id} {
       allow read, write: if signedIn();

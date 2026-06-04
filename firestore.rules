@@ -1,17 +1,29 @@
 rules_version = '2';
 
-// RoomieSync Firestore 보안 규칙
+// RoomieSync Firestore 보안 규칙 (#14 그룹별 격리 적용)
 //
 // 적용 방법:
 //   1) Firebase 콘솔 → Authentication → 로그인 방법 → '익명' 사용 설정
 //   2) Firebase 콘솔 → Firestore Database → 규칙 탭에 아래 내용 붙여넣기 → 게시
-//      (또는 firebase deploy --only firestore:rules)
 //
-// 효과: 테스트 모드(if true, 전체 공개)를 대체해 '인증된 세션'만 접근 가능.
-//       앱은 시작 시 익명 인증(FirebaseBootstrap)으로 자동 로그인한다.
+// 격리 모델:
+//   - 그룹 doc 에 memberUIDs(익명 uid 목록)를 둔다.
+//   - 어떤 사용자가 그룹 G 의 '멤버'인지 = uid 가 groups/G.memberUIDs 에 포함.
+//   - 자식 컬렉션(members/chores/expenses/choreCompletions/settlements/notes)은
+//     해당 groupID 그룹의 멤버만 읽기/쓰기 가능.
+//   - 멤버 doc 은 ownerUID(생성한 uid)를 가져, 본인 멤버 doc 만 생성/수정 가능.
 //
-// 한계(다음 단계): 현재는 인증된 사용자면 모든 그룹 데이터 접근 가능하다.
-//   진짜 그룹별 격리는 사용자(uid)↔멤버 매핑 + 멤버십 검사가 필요하다.
+// 초대코드 합류:
+//   - 그룹 doc 자체는 인증된 사용자면 읽기 가능(코드로 검색 위해). 민감정보는 자식 컬렉션에만 둔다.
+//   - 합류 시 자기 uid 를 그룹 memberUIDs 에 추가(자가 합류 update 허용)한 뒤 본인 멤버 doc 생성.
+//
+// 한계: 그룹 doc 읽기가 열려 있어, 그룹 id 를 아는 사용자는 자가 합류가 가능하다(코드 기반 PoC).
+//       완전한 비공개는 초대코드 해시/서버 검증이 필요하다.
+//
+// 주의(레거시): 이 규칙 적용 전에 만든 그룹은 memberUIDs 가 없어 접근 불가.
+//              규칙 적용 후에는 그룹을 새로 만들어 사용한다.
+//
+// 롤백: 이전(인증만 요구) 규칙은 git 히스토리에 있다.
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -20,42 +32,76 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // 문자열 길이 가드 (과도한 페이로드 방지)
+    // gid 그룹의 멤버인가 (그룹 doc 의 memberUIDs 로 판정).
+    function isMember(gid) {
+      return signedIn()
+        && request.auth.uid in get(/databases/$(database)/documents/groups/$(gid)).data.memberUIDs;
+    }
+
+    // 문자열 길이 가드 (create/update 에만 적용; read/delete 는 request.resource 가 null).
     function okString(field, maxLen) {
       return !(field in request.resource.data)
         || (request.resource.data[field] is string && request.resource.data[field].size() <= maxLen);
     }
 
-    // 주의: 권한 동사별 request.resource 유무가 다르다.
-    //   - read/delete: request.resource == null  → okString 가드를 걸면 평가 실패(거부)
-    //   - create/update: request.resource 존재     → okString 으로 길이 검증 가능
-    // 따라서 길이 가드는 create/update 에만 적용하고, read/delete 는 인증만 요구한다.
     match /groups/{id} {
-      allow read, delete: if signedIn();
-      allow create, update: if signedIn() && okString('name', 40) && okString('inviteCode', 8);
+      // 읽기: 인증되면 가능(초대코드 검색용). 그룹 doc 엔 민감정보를 두지 않는다.
+      allow read: if signedIn();
+      // 생성: 본인 uid 가 memberUIDs 에 포함되어야.
+      allow create: if signedIn()
+        && request.auth.uid in request.resource.data.memberUIDs
+        && okString('name', 40) && okString('inviteCode', 8);
+      // 수정: 기존 멤버이거나(편집) 자가 합류(새 memberUIDs 에 본인 추가).
+      allow update: if signedIn()
+        && (request.auth.uid in resource.data.memberUIDs
+            || request.auth.uid in request.resource.data.memberUIDs)
+        && okString('name', 40) && okString('inviteCode', 8);
+      allow delete: if isMember(id);
     }
+
     match /members/{id} {
-      allow read, delete: if signedIn();
-      allow create, update: if signedIn() && okString('name', 30)
-        && okString('bankName', 30) && okString('accountNumber', 40);
+      allow read:   if isMember(resource.data.groupID);
+      // 본인 소유(ownerUID == uid) 멤버 doc 만 생성/수정.
+      allow create: if signedIn() && request.resource.data.ownerUID == request.auth.uid
+        && okString('name', 30) && okString('bankName', 30) && okString('accountNumber', 40);
+      allow update: if signedIn() && resource.data.ownerUID == request.auth.uid
+        && okString('name', 30) && okString('bankName', 30) && okString('accountNumber', 40);
+      // 삭제: 본인 소유이거나 같은 그룹 멤버(그룹 삭제 정리 포함).
+      allow delete: if signedIn()
+        && (resource.data.ownerUID == request.auth.uid || isMember(resource.data.groupID));
     }
+
     match /chores/{id} {
-      allow read, delete: if signedIn();
-      allow create, update: if signedIn() && okString('title', 60) && okString('icon', 16);
+      allow read:   if isMember(resource.data.groupID);
+      allow create: if isMember(request.resource.data.groupID) && okString('title', 60) && okString('icon', 16);
+      allow update: if isMember(request.resource.data.groupID) && okString('title', 60) && okString('icon', 16);
+      allow delete: if isMember(resource.data.groupID);
     }
+
     match /choreCompletions/{id} {
-      allow read, write: if signedIn();
+      allow read:           if isMember(resource.data.groupID);
+      allow create, update: if isMember(request.resource.data.groupID);
+      allow delete:         if isMember(resource.data.groupID);
     }
+
     match /expenses/{id} {
-      allow read, delete: if signedIn();
-      allow create, update: if signedIn() && okString('title', 60) && okString('memo', 400);
+      allow read:   if isMember(resource.data.groupID);
+      allow create: if isMember(request.resource.data.groupID) && okString('title', 60) && okString('memo', 400);
+      allow update: if isMember(request.resource.data.groupID) && okString('title', 60) && okString('memo', 400);
+      allow delete: if isMember(resource.data.groupID);
     }
+
     match /settlements/{id} {
-      allow read, write: if signedIn();
+      allow read:           if isMember(resource.data.groupID);
+      allow create, update: if isMember(request.resource.data.groupID);
+      allow delete:         if isMember(resource.data.groupID);
     }
+
     match /notes/{id} {
-      allow read, delete: if signedIn();
-      allow create, update: if signedIn() && okString('text', 500);
+      allow read:   if isMember(resource.data.groupID);
+      allow create: if isMember(request.resource.data.groupID) && okString('text', 500);
+      allow update: if isMember(request.resource.data.groupID) && okString('text', 500);
+      allow delete: if isMember(resource.data.groupID);
     }
 
     // 그 외 경로는 모두 거부

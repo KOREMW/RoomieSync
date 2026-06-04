@@ -20,9 +20,19 @@ RoomieSync 에 적용한 취약점 방어와, 운영 전 권장 사항을 정리
 2. **보안 규칙 배포**: `firestore.rules` 내용을 콘솔 Firestore 규칙에 게시 (테스트 모드 교체).
    - ⚠️ 익명 인증을 먼저 켠 뒤 규칙을 배포해야 앱이 정상 동작한다.
 
+## 그룹별 격리 (#14, 적용됨)
+
+- 그룹 doc 에 `memberUIDs`(익명 uid 목록), 멤버 doc 에 `ownerUID`(생성 uid)를 둔다.
+- `isMember(gid)` = uid 가 groups/gid.memberUIDs 에 포함. 자식 컬렉션
+  (members/chores/expenses/choreCompletions/settlements/notes)은 멤버만 접근.
+- 멤버 doc 은 본인 소유(ownerUID==uid)만 생성/수정.
+- `fetchAllGroups` 도 memberUIDs arrayContains 로 내 그룹만 반환(스위처 격리).
+- **레거시 주의**: 규칙 적용 전 만든 그룹은 memberUIDs 가 없어 접근 불가 → 새로 생성해 사용.
+
 ## 알려진 한계 / 다음 단계
 
-- **그룹별 격리 미완성**: 현재 규칙은 "인증된 사용자면 접근 가능"까지다. 진짜 멤버십 기반 격리는
-  사용자(uid)↔멤버 매핑과 규칙의 멤버십 검사가 필요하다.
+- **그룹 doc 읽기 개방**: 초대코드 검색을 위해 그룹 doc 자체는 인증되면 읽을 수 있다(민감정보는
+  자식 컬렉션에만 둠). 그룹 id 를 아는 사용자의 자가 합류가 가능 → 완전 비공개는 초대코드 해시/
+  서버 검증(Cloud Functions)이 필요하다.
 - **계정 모델**: 익명 인증이라 기기 분실 시 세션 복구 불가. 실제 서비스는 Sign in with Apple 권장.
 - **영수증 이미지**: Firestore 동기화 제외(1MB 한계). 필요 시 Cloud Storage + 접근 규칙.

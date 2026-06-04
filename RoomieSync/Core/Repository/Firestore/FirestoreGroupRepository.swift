@@ -13,10 +13,22 @@
 #if canImport(FirebaseFirestore)
 import Foundation
 import FirebaseFirestore
+#if canImport(FirebaseAuth)
+import FirebaseAuth
+#endif
 
 public actor FirestoreGroupRepository: GroupRepositoryProtocol {
     /// 그룹 최대 인원 (SwiftData 구현과 동일).
     private static let maxMembers = 6
+
+    /// 현재 익명 인증 사용자의 uid. 멤버십 기반 그룹 격리(#14)에 사용.
+    private func currentUID() -> String? {
+        #if canImport(FirebaseAuth)
+        return Auth.auth().currentUser?.uid
+        #else
+        return nil
+        #endif
+    }
 
     // Firestore 인스턴스는 내부적으로 스레드-세이프하며, runTransaction 의 escaping 클로저로
     // 전달해야 하므로 nonisolated(unsafe) 로 둔다.
@@ -33,8 +45,14 @@ public actor FirestoreGroupRepository: GroupRepositoryProtocol {
         let host = Member(name: hostName, avatarColorHex: hostAvatarColorHex, groupID: groupID)
         let group = Group(id: groupID, name: name,
                           inviteCode: Group.generateInviteCode(), memberIDs: [host.id])
-        try await groups.document(groupID.uuidString).setData(group.fsDict)
-        try await membersCol.document(host.id.uuidString).setData(host.fsDict)
+        let uid = currentUID()
+        // 그룹 격리(#14): 그룹 doc 에 멤버 uid 목록, 멤버 doc 에 소유 uid 기록.
+        var groupDict = group.fsDict
+        groupDict["memberUIDs"] = uid.map { [$0] } ?? []
+        var hostDict = host.fsDict
+        if let uid { hostDict["ownerUID"] = uid }
+        try await groups.document(groupID.uuidString).setData(groupDict)
+        try await membersCol.document(host.id.uuidString).setData(hostDict)
         return group
     }
 
@@ -59,7 +77,9 @@ public actor FirestoreGroupRepository: GroupRepositoryProtocol {
         let member = Member(name: name, avatarColorHex: avatarColorHex, groupID: groupID)
         let groupRef = groups.document(groupID.uuidString)
         let memberRef = membersCol.document(member.id.uuidString)
-        let memberDict = member.fsDict
+        let uid = currentUID()
+        var memberDict = member.fsDict
+        if let uid { memberDict["ownerUID"] = uid }   // 격리(#14): 멤버 doc 소유 uid
         let newMemberIDString = member.id.uuidString
 
         // 트랜잭션으로 "인원수 확인 → 멤버 추가"를 원자적으로 처리한다.
@@ -86,8 +106,10 @@ public actor FirestoreGroupRepository: GroupRepositoryProtocol {
                     return nil
                 }
                 transaction.setData(memberDict, forDocument: memberRef)
-                transaction.updateData(["memberIDs": FieldValue.arrayUnion([newMemberIDString])],
-                                       forDocument: groupRef)
+                // 격리(#14): 그룹 memberUIDs 에 합류자 uid 도 원자적으로 추가.
+                var groupUpdate: [String: Any] = ["memberIDs": FieldValue.arrayUnion([newMemberIDString])]
+                if let uid { groupUpdate["memberUIDs"] = FieldValue.arrayUnion([uid]) }
+                transaction.updateData(groupUpdate, forDocument: groupRef)
                 return nil
             }
         } catch let error as NSError where error.domain == "RoomieSync" {
@@ -129,13 +151,13 @@ public actor FirestoreGroupRepository: GroupRepositoryProtocol {
         let ref = membersCol.document(memberID.uuidString)
         let doc = try await ref.getDocument()
         guard let data = doc.data(), let member = Member(fs: data) else { throw RepositoryError.notFound }
+        let ownerUID = data["ownerUID"] as? String   // 격리(#14): 그룹 memberUIDs 에서 제거할 uid
         try await ref.delete()
         let groupRef = groups.document(member.groupID.uuidString)
-        let gdoc = try await groupRef.getDocument()
-        if let gdata = gdoc.data(), var group = Group(fs: gdata) {
-            group.memberIDs.removeAll { $0 == memberID }
-            try await groupRef.updateData(["memberIDs": FSMap.ids(group.memberIDs)])
-        }
+        // memberIDs 제거 + memberUIDs 에서 소유 uid 제거(원자적 arrayRemove).
+        var update: [String: Any] = ["memberIDs": FieldValue.arrayRemove([memberID.uuidString])]
+        if let ownerUID { update["memberUIDs"] = FieldValue.arrayRemove([ownerUID]) }
+        try await groupRef.updateData(update)
     }
 
     public func deleteGroup(_ groupID: UUID) async throws {
@@ -150,8 +172,13 @@ public actor FirestoreGroupRepository: GroupRepositoryProtocol {
 
     public func fetchAllGroups() async throws -> [Group] {
         await FirebaseAuthGate.shared.ensureSignedIn()
-        // PoC: 인증/멤버십 스코프가 없어 전체 groups 를 반환.
-        let snap = try await groups.getDocuments()
+        // 격리(#14): 내 uid 가 memberUIDs 에 포함된 그룹만 반환.
+        // (memberUIDs 가 없는 레거시 그룹은 #14 적용 후 접근 대상이 아니므로 제외)
+        guard let uid = currentUID() else {
+            let snap = try await groups.getDocuments()
+            return snap.documents.compactMap { Group(fs: $0.data()) }
+        }
+        let snap = try await groups.whereField("memberUIDs", arrayContains: uid).getDocuments()
         return snap.documents.compactMap { Group(fs: $0.data()) }
     }
 

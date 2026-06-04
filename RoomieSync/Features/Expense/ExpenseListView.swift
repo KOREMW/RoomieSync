@@ -65,6 +65,13 @@ struct ExpenseListView: View {
             if let vm = viewModel {
                 ToolbarItem(placement: .topBarTrailing) { sortMenu(vm) }
             }
+            ToolbarItem(placement: .topBarLeading) {
+                NavigationLink {
+                    SettlementHistoryView(groupID: groupID)
+                } label: {
+                    Image(systemName: "clock.arrow.circlepath")
+                }
+            }
         }
         .overlay(alignment: .bottomTrailing) {
             if let vm = viewModel, !vm.filtered.isEmpty {

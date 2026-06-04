@@ -195,8 +195,12 @@ struct SettlementActionView: View {
     @MainActor
     private func markAllSettled() async {
         do {
-            let plan = settlements
-            if !plan.isEmpty { try await repositories.expense.saveSettlements(plan) }
+            // 정산 완료 시각을 기록해 '정산 내역(#5)'에 남도록 한다.
+            let stamped = settlements.map {
+                Settlement(id: $0.id, groupID: $0.groupID, fromMemberID: $0.fromMemberID,
+                           toMemberID: $0.toMemberID, amount: $0.amount, settledAt: .now)
+            }
+            if !stamped.isEmpty { try await repositories.expense.saveSettlements(stamped) }
             if !pendingExpenseIDs.isEmpty { try await repositories.expense.markSettled(pendingExpenseIDs) }
             HapticManager.shared.success()
             dismiss()

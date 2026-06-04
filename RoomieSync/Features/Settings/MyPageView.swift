@@ -76,20 +76,25 @@ struct MyPageView: View {
                         Text(bank).tag(bank)
                     }
                 }
-                .onChange(of: draftBank) { _, _ in accountSaved = false }
+                .onChange(of: draftBank) { _, _ in
+                    accountSaved = false
+                    // 은행이 바뀌면 그 은행 형식대로 하이픈 재배치.
+                    draftAccount = BankAccountFormatter.format(draftAccount, bank: draftBank)
+                }
                 HStack {
                     SwiftUI.Group {
                         if revealAccount {
-                            TextField("계좌번호 (숫자만)", text: $draftAccount)
+                            TextField("계좌번호", text: $draftAccount)
                         } else {
-                            SecureField("계좌번호 (숫자만)", text: $draftAccount)
+                            SecureField("계좌번호", text: $draftAccount)
                         }
                     }
                     .keyboardType(.numberPad)
                     .onChange(of: draftAccount) { _, newValue in
-                        // 숫자만 허용
-                        let digits = newValue.filter(\.isNumber)
-                        if digits != newValue { draftAccount = digits }
+                        // 선택한 은행 형식대로 하이픈 자동 분할(저장 시엔 숫자만 남는다).
+                        // 지우면 자동으로 하이픈이 줄어 원상복구된다.
+                        let formatted = BankAccountFormatter.format(newValue, bank: draftBank)
+                        if formatted != newValue { draftAccount = formatted }
                         accountSaved = false
                     }
                     Button {
@@ -231,7 +236,7 @@ struct MyPageView: View {
                 myMemberID = me.id
                 myName = me.name
                 draftBank = me.bankName ?? ""
-                draftAccount = me.accountNumber ?? ""
+                draftAccount = BankAccountFormatter.format(me.accountNumber ?? "", bank: me.bankName ?? "")
             }
         } catch {
             // 프로필 로드 실패는 조용히 무시(마이페이지의 알림 설정은 계속 사용 가능)

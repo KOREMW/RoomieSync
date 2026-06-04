@@ -54,7 +54,7 @@ public enum FirebaseBootstrap {
 
     private static func debugLog(_ message: String) {
         #if DEBUG
-        print(message)
+        NSLog("[RoomieSync] %@", message)
         #endif
     }
 }

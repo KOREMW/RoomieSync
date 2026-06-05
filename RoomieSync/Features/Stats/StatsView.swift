@@ -14,6 +14,7 @@ struct StatsView: View {
     let groupID: UUID
     @Environment(\.repositories) private var repositories
     @State private var viewModel: StatsViewModel?
+    @State private var selectedBadge: Badge?
 
     var body: some View {
         ScrollView {
@@ -141,31 +142,58 @@ struct StatsView: View {
             let columns = Array(repeating: GridItem(.flexible(), spacing: Spacing.s), count: 4)
             LazyVGrid(columns: columns, spacing: Spacing.m) {
                 ForEach(vm.badges) { badge in
-                    VStack(spacing: 3) {
-                        Image(systemName: badge.icon)
-                            .font(.system(size: 26))
-                            .foregroundStyle(badge.earned ? Tokens.primary : Tokens.textTertiary.opacity(0.4))
-                        Text(badge.title)
-                            .font(.system(size: 10, weight: .medium))
-                            .foregroundStyle(badge.earned ? Tokens.textPrimary : Tokens.textTertiary)
-                            .multilineTextAlignment(.center)
-                            .lineLimit(1)
-                        if let progress = badge.progressText {
-                            Text(progress)
-                                .font(.system(size: 9))
-                                .foregroundStyle(Tokens.textTertiary)
-                        } else if badge.earned {
-                            Image(systemName: "checkmark")
-                                .font(.system(size: 8, weight: .bold))
-                                .foregroundStyle(Tokens.success)
+                    Button { selectedBadge = badge } label: {
+                        VStack(spacing: 3) {
+                            Image(systemName: badge.icon)
+                                .font(.system(size: 26))
+                                .foregroundStyle(badge.earned ? Tokens.primary : Tokens.textTertiary.opacity(0.4))
+                            Text(badge.title)
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundStyle(badge.earned ? Tokens.textPrimary : Tokens.textTertiary)
+                                .multilineTextAlignment(.center)
+                                .lineLimit(1)
+                            if let progress = badge.progressText {
+                                Text(progress)
+                                    .font(.system(size: 9))
+                                    .foregroundStyle(Tokens.textTertiary)
+                            } else if badge.earned {
+                                Image(systemName: "checkmark")
+                                    .font(.system(size: 8, weight: .bold))
+                                    .foregroundStyle(Tokens.success)
+                            }
                         }
+                        .frame(maxWidth: .infinity)
+                        .opacity(badge.earned ? 1 : 0.6)
+                        .contentShape(Rectangle())
                     }
-                    .frame(maxWidth: .infinity)
-                    .opacity(badge.earned ? 1 : 0.6)
+                    .buttonStyle(.plain)
                 }
             }
             .padding(.top, Spacing.xs)
+
+            Text("뱃지를 누르면 획득 방법을 볼 수 있어요.")
+                .font(Typo.caption())
+                .foregroundStyle(Tokens.textTertiary)
         }
+        .alert(selectedBadge?.title ?? "",
+               isPresented: Binding(get: { selectedBadge != nil },
+                                    set: { if !$0 { selectedBadge = nil } }),
+               presenting: selectedBadge) { _ in
+            Button("확인", role: .cancel) { selectedBadge = nil }
+        } message: { badge in
+            Text(badgeMessage(badge))
+        }
+    }
+
+    /// 뱃지 설명 + 상태(달성/진행도) 텍스트.
+    private func badgeMessage(_ badge: Badge) -> String {
+        var lines = [badge.howTo]
+        if badge.earned {
+            lines.append("\n✅ 이미 달성했어요!")
+        } else if let progress = badge.progressText {
+            lines.append("\n진행도: \(progress)")
+        }
+        return lines.joined()
     }
 
     @ViewBuilder

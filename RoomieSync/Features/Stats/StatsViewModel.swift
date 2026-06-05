@@ -39,6 +39,8 @@ public struct Badge: Identifiable {
     public let detail: String
     /// 미획득 시 진행도 표시(예: "3/10"). 획득했거나 표시 불필요하면 nil.
     public var progressText: String? = nil
+    /// 획득 방법 설명(탭하면 보여줌).
+    public var howTo: String = ""
 }
 
 @MainActor
@@ -232,25 +234,37 @@ public final class StatsViewModel {
 
     private func buildBadges(total: Int, longestStreak: Int, fairness: Int,
                              hardCount: Int, expenseCount: Int) -> [Badge] {
-        func badge(_ title: String, _ icon: String, value: Int, target: Int, unit: String) -> Badge {
+        func badge(_ title: String, _ icon: String, value: Int, target: Int, unit: String, howTo: String) -> Badge {
             let earned = value >= target
             return Badge(title: title, icon: icon, earned: earned,
                          detail: "\(target)\(unit) 달성",
-                         progressText: earned ? nil : "\(min(value, target))/\(target)")
+                         progressText: earned ? nil : "\(min(value, target))/\(target)",
+                         howTo: howTo)
         }
         return [
-            badge("첫 완료", "star.fill", value: total, target: 1, unit: "회"),
-            badge("10회", "10.circle.fill", value: total, target: 10, unit: "회"),
-            badge("30회", "30.circle.fill", value: total, target: 30, unit: "회"),
-            badge("50회", "50.circle.fill", value: total, target: 50, unit: "회"),
-            badge("100회", "rosette", value: total, target: 100, unit: "회"),
-            badge("3일 연속", "flame.fill", value: longestStreak, target: 3, unit: "일"),
-            badge("7일 연속", "flame.circle.fill", value: longestStreak, target: 7, unit: "일"),
-            badge("14일 연속", "flame.circle", value: longestStreak, target: 14, unit: "일"),
-            badge("고난도 마스터", "bolt.fill", value: hardCount, target: 10, unit: "회"),
-            badge("기록왕", "doc.text.fill", value: expenseCount, target: 10, unit: "건"),
+            badge("첫 완료", "star.fill", value: total, target: 1, unit: "회",
+                  howTo: "가사를 1회 완료하면 획득해요."),
+            badge("10회", "10.circle.fill", value: total, target: 10, unit: "회",
+                  howTo: "가사를 누적 10회 완료하면 획득해요."),
+            badge("30회", "30.circle.fill", value: total, target: 30, unit: "회",
+                  howTo: "가사를 누적 30회 완료하면 획득해요."),
+            badge("50회", "50.circle.fill", value: total, target: 50, unit: "회",
+                  howTo: "가사를 누적 50회 완료하면 획득해요."),
+            badge("100회", "rosette", value: total, target: 100, unit: "회",
+                  howTo: "가사를 누적 100회 완료하면 획득해요."),
+            badge("3일 연속", "flame.fill", value: longestStreak, target: 3, unit: "일",
+                  howTo: "3일 연속(매일 1회 이상) 가사를 완료하면 획득해요."),
+            badge("7일 연속", "flame.circle.fill", value: longestStreak, target: 7, unit: "일",
+                  howTo: "7일 연속(매일 1회 이상) 가사를 완료하면 획득해요."),
+            badge("14일 연속", "flame.circle", value: longestStreak, target: 14, unit: "일",
+                  howTo: "14일 연속(매일 1회 이상) 가사를 완료하면 획득해요."),
+            badge("고난도 마스터", "bolt.fill", value: hardCount, target: 10, unit: "회",
+                  howTo: "'어려움' 난이도 가사를 10회 완료하면 획득해요. (가사 추가 시 난이도를 설정할 수 있어요)"),
+            badge("기록왕", "doc.text.fill", value: expenseCount, target: 10, unit: "건",
+                  howTo: "내가 결제한 지출을 10건 등록하면 획득해요."),
             Badge(title: "공정왕", icon: "scalemass.fill", earned: fairness >= 80,
-                  detail: "공정지수 80 이상", progressText: fairness >= 80 ? nil : "\(fairness)/80")
+                  detail: "공정지수 80 이상", progressText: fairness >= 80 ? nil : "\(fairness)/80",
+                  howTo: "그룹의 공정지수를 80 이상으로 유지하면 획득해요. (멤버 간 가사 부담이 고를수록 높아져요)")
         ]
     }
 

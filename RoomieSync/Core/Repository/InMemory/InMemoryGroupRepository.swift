@@ -50,6 +50,15 @@ public actor InMemoryGroupRepository: GroupRepositoryProtocol {
         return g
     }
 
+    public func updateGroupInfo(_ groupID: UUID, name: String, icon: String, iconColorHex: String) async throws -> Group {
+        guard var group = groups[groupID] else { throw RepositoryError.notFound }
+        group.name = name
+        group.icon = icon
+        group.iconColorHex = iconColorHex
+        groups[groupID] = group
+        return group
+    }
+
     public func addMember(toGroup groupID: UUID, name: String, avatarColorHex: String) async throws -> Member {
         guard var group = groups[groupID] else { throw RepositoryError.notFound }
         guard group.memberIDs.count < 6 else {

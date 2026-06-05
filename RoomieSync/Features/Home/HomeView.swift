@@ -68,13 +68,27 @@ struct HomeView: View {
 
     @ViewBuilder
     private var headerSection: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("안녕하세요, \(viewModel?.greetingName ?? "")님 👋")
-                .font(Typo.title())
-                .foregroundStyle(Tokens.textPrimary)
-            Text("오늘도 좋은 하루 보내세요")
-                .font(Typo.body())
-                .foregroundStyle(Tokens.textSecondary)
+        VStack(alignment: .leading, spacing: 8) {
+            if let vm = viewModel, !vm.groupName.isEmpty {
+                HStack(spacing: Spacing.s) {
+                    ZStack {
+                        Circle().fill(Color(hex: vm.groupColorHex))
+                        Text(vm.groupIcon).font(.system(size: 18))
+                    }
+                    .frame(width: 34, height: 34)
+                    Text(vm.groupName)
+                        .font(Typo.sectionTitle())
+                        .foregroundStyle(Tokens.textPrimary)
+                }
+            }
+            VStack(alignment: .leading, spacing: 4) {
+                Text("안녕하세요, \(viewModel?.greetingName ?? "")님 👋")
+                    .font(Typo.title())
+                    .foregroundStyle(Tokens.textPrimary)
+                Text("오늘도 좋은 하루 보내세요")
+                    .font(Typo.body())
+                    .foregroundStyle(Tokens.textSecondary)
+            }
         }
     }
 

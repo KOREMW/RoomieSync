@@ -50,7 +50,9 @@ extension Group {
             "name": name,
             "inviteCode": inviteCode,
             "createdAt": FSMap.epoch(createdAt),
-            "memberIDs": FSMap.ids(memberIDs)
+            "memberIDs": FSMap.ids(memberIDs),
+            "icon": icon,
+            "iconColorHex": iconColorHex
         ]
     }
     init?(fs d: [String: Any]) {
@@ -59,7 +61,9 @@ extension Group {
               let code = FSMap.str(d["inviteCode"]),
               let created = FSMap.date(d["createdAt"]) else { return nil }
         self.init(id: id, name: name, inviteCode: code, createdAt: created,
-                  memberIDs: FSMap.uuids(d["memberIDs"]))
+                  memberIDs: FSMap.uuids(d["memberIDs"]),
+                  icon: FSMap.str(d["icon"]) ?? Group.defaultIcon,
+                  iconColorHex: FSMap.str(d["iconColorHex"]) ?? Group.defaultIconColorHex)
     }
 }
 

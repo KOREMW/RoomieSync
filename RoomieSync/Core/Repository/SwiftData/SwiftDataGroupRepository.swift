@@ -51,6 +51,16 @@ public actor SwiftDataGroupRepository: GroupRepositoryProtocol {
         try fetchGroupEntity(id: id).toDomain()
     }
 
+    public func updateGroupInfo(_ groupID: UUID, name: String, icon: String, iconColorHex: String) async throws -> Group {
+        let entity = try fetchGroupEntity(id: groupID)
+        entity.name = name
+        entity.icon = icon
+        entity.iconColorHex = iconColorHex
+        do { try modelContext.save() }
+        catch { throw RepositoryError.persistenceFailure(underlying: error.localizedDescription) }
+        return entity.toDomain()
+    }
+
     public func addMember(toGroup groupID: UUID, name: String, avatarColorHex: String) async throws -> Member {
         let group = try fetchGroupEntity(id: groupID)
         guard (group.members ?? []).count < 6 else {

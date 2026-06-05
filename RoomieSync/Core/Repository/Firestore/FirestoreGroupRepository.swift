@@ -72,6 +72,16 @@ public actor FirestoreGroupRepository: GroupRepositoryProtocol {
         return group
     }
 
+    public func updateGroupInfo(_ groupID: UUID, name: String, icon: String, iconColorHex: String) async throws -> Group {
+        await FirebaseAuthGate.shared.ensureSignedIn()
+        let ref = groups.document(groupID.uuidString)
+        // memberUIDs 등 다른 필드는 건드리지 않도록 부분 업데이트.
+        try await ref.updateData(["name": name, "icon": icon, "iconColorHex": iconColorHex])
+        let doc = try await ref.getDocument()
+        guard let data = doc.data(), let group = Group(fs: data) else { throw RepositoryError.notFound }
+        return group
+    }
+
     public func addMember(toGroup groupID: UUID, name: String, avatarColorHex: String) async throws -> Member {
         await FirebaseAuthGate.shared.ensureSignedIn()
         let member = Member(name: name, avatarColorHex: avatarColorHex, groupID: groupID)

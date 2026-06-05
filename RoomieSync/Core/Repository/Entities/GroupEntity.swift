@@ -21,6 +21,9 @@ public final class GroupEntity {
     public var name: String = ""
     public var inviteCode: String = ""
     public var createdAt: Date = Date()
+    /// 모임 아이콘(이모지)과 아이콘 배경색(hex).
+    public var icon: String = Group.defaultIcon
+    public var iconColorHex: String = Group.defaultIconColorHex
 
     /// 멤버 — Group 삭제 시 멤버도 함께 삭제 (.cascade).
     @Relationship(deleteRule: .cascade, inverse: \MemberEntity.group)
@@ -59,7 +62,9 @@ public extension GroupEntity {
             name: name,
             inviteCode: inviteCode,
             createdAt: createdAt,
-            memberIDs: (members ?? []).map(\.id)
+            memberIDs: (members ?? []).map(\.id),
+            icon: icon,
+            iconColorHex: iconColorHex
         )
     }
 
@@ -67,5 +72,7 @@ public extension GroupEntity {
         self.name = domain.name
         self.inviteCode = domain.inviteCode
         self.createdAt = domain.createdAt
+        self.icon = domain.icon
+        self.iconColorHex = domain.iconColorHex
     }
 }

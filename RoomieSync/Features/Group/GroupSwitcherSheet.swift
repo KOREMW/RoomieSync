@@ -32,8 +32,11 @@ struct GroupSwitcherSheet: View {
                                 dismiss()
                             } label: {
                                 HStack(spacing: Spacing.m) {
-                                    Image(systemName: "house.fill")
-                                        .foregroundStyle(Tokens.primary)
+                                    ZStack {
+                                        Circle().fill(Color(hex: group.iconColorHex))
+                                        Text(group.icon).font(.system(size: 18))
+                                    }
+                                    .frame(width: 36, height: 36)
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text(group.name).foregroundStyle(Tokens.textPrimary)
                                         Text("멤버 \(group.memberIDs.count)명")

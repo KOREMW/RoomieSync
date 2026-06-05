@@ -20,6 +20,9 @@ public final class HomeViewModel {
     private let expenseRepo: any ExpenseRepositoryProtocol
 
     public private(set) var greetingName: String = ""
+    public private(set) var groupName: String = ""
+    public private(set) var groupIcon: String = Group.defaultIcon
+    public private(set) var groupColorHex: String = Group.defaultIconColorHex
     public private(set) var todayChores: [Chore] = []
     public private(set) var membersByID: [UUID: Member] = [:]
     public private(set) var receiveAmount: Decimal = 0
@@ -46,6 +49,9 @@ public final class HomeViewModel {
             membersByID = Dictionary(uniqueKeysWithValues: members.map { ($0.id, $0) })
             currentUserID = members.first?.id
             greetingName = members.first?.name ?? ""
+            groupName = group.name
+            groupIcon = group.icon
+            groupColorHex = group.iconColorHex
 
             todayChores = try await choreRepo.fetchChores(groupID: groupID)
 

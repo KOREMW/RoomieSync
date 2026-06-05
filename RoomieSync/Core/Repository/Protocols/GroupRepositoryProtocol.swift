@@ -19,6 +19,9 @@ public protocol GroupRepositoryProtocol: Sendable {
     /// 그룹 단일 조회.
     func fetchGroup(id: UUID) async throws -> Group
 
+    /// 모임 정보(이름·아이콘·아이콘 색) 변경.
+    func updateGroupInfo(_ groupID: UUID, name: String, icon: String, iconColorHex: String) async throws -> Group
+
     /// 그룹에 멤버 추가 — 최대 6 명 (계획서 2 P0 ①).
     func addMember(toGroup groupID: UUID, name: String, avatarColorHex: String) async throws -> Member
 

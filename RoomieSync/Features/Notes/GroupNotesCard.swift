@@ -13,9 +13,22 @@ struct GroupNotesCard: View {
     let groupID: UUID
     @Environment(\.repositories) private var repositories
     @State private var notes: [GroupNote] = []
+    /// 마지막으로 확인한 공지 시각(epoch). 보드를 열면 갱신된다(NotesBoardView).
+    @AppStorage private var lastSeen: Double
+
+    init(groupID: UUID) {
+        self.groupID = groupID
+        self._lastSeen = AppStorage(wrappedValue: 0, "notesLastSeen.\(groupID.uuidString)")
+    }
 
     /// fetchNotes 는 고정(핀) 우선 + 최신순이라 첫 항목이 가장 중요한 공지.
     private var top: GroupNote? { notes.first }
+
+    /// 가장 최근 공지가 마지막 확인 시각보다 새로우면 'NEW'.
+    private var hasNew: Bool {
+        guard let latest = notes.map(\.createdAt).max()?.timeIntervalSince1970 else { return false }
+        return latest > lastSeen + 0.5
+    }
 
     var body: some View {
         NavigationLink {
@@ -33,6 +46,13 @@ struct GroupNotesCard: View {
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 6) {
                         Text("공지").font(Typo.bodyBold()).foregroundStyle(Tokens.textPrimary)
+                        if hasNew {
+                            Text("NEW")
+                                .font(.system(size: 10, weight: .heavy))
+                                .padding(.horizontal, 6).padding(.vertical, 1)
+                                .background(Tokens.danger).foregroundStyle(.white)
+                                .clipShape(Capsule())
+                        }
                         if notes.count > 1 {
                             Text("\(notes.count)")
                                 .font(.system(size: 11, weight: .bold))
@@ -63,8 +83,12 @@ struct GroupNotesCard: View {
                     .foregroundStyle(Tokens.textTertiary)
             }
             .padding(Spacing.m)
-            .background(Tokens.surfaceHighlight)
+            .background(hasNew ? Tokens.primary.opacity(0.12) : Tokens.surfaceHighlight)
             .clipShape(RoundedRectangle(cornerRadius: Radius.m))
+            .overlay(
+                RoundedRectangle(cornerRadius: Radius.m)
+                    .stroke(Tokens.primary, lineWidth: hasNew ? 1.5 : 0)
+            )
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

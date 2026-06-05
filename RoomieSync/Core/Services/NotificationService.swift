@@ -157,6 +157,25 @@ public final class NotificationService: NSObject {
         try? await center.add(request)
     }
 
+    // MARK: - 시나리오 6: 새 공지 알림
+
+    public func notifyAnnouncement(text: String, authorName: String) async {
+        guard userPrefers(.announcement) else { return }
+        let content = UNMutableNotificationContent()
+        content.title = "📢 새 공지 — \(authorName)"
+        content.body = text
+        content.sound = .default
+        content.interruptionLevel = .active
+
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 0.5, repeats: false)
+        let request = UNNotificationRequest(
+            identifier: "announcement.\(UUID().uuidString)",
+            content: content,
+            trigger: trigger
+        )
+        try? await center.add(request)
+    }
+
     // MARK: - 시나리오 5: 월말 정산
 
     /// 매월 마지막 날 오전 10시.
@@ -223,6 +242,7 @@ public final class NotificationService: NSObject {
         case memberCompletion  = "notif.memberCompletion"
         case expenseAdded      = "notif.expenseAdded"
         case monthlySettlement = "notif.monthlySettlement"
+        case announcement      = "notif.announcement"
 
         public var displayName: String {
             switch self {
@@ -231,6 +251,7 @@ public final class NotificationService: NSObject {
             case .memberCompletion:  return "룸메이트 완료 알림"
             case .expenseAdded:      return "지출 입력 알림"
             case .monthlySettlement: return "월말 정산 알림"
+            case .announcement:      return "새 공지 알림"
             }
         }
 

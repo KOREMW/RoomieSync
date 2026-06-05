@@ -18,6 +18,13 @@ struct NotesBoardView: View {
     @State private var draft: String = ""
     @State private var isLoading = true
     @State private var errorMessage: String? = nil
+    /// 마지막으로 확인한 공지 시각(epoch). 홈 배너의 'NEW' 강조 해제에 사용.
+    @AppStorage private var lastSeen: Double
+
+    init(groupID: UUID) {
+        self.groupID = groupID
+        self._lastSeen = AppStorage(wrappedValue: 0, "notesLastSeen.\(groupID.uuidString)")
+    }
 
     var body: some View {
         List {
@@ -71,15 +78,20 @@ struct NotesBoardView: View {
 
     @ViewBuilder
     private func noteRow(_ note: GroupNote) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 6) {
-                if note.isPinned {
-                    Image(systemName: "pin.fill").font(.system(size: 11)).foregroundStyle(Tokens.primary)
-                }
-                Text(note.text)
+        HStack(alignment: .top, spacing: Spacing.s) {
+            if let author = membersByID[note.authorMemberID] {
+                MemberAvatarView(member: author, size: 32)
             }
-            Text("\(membersByID[note.authorMemberID]?.name ?? "?") · \(relativeDate(note.createdAt))")
-                .font(Typo.caption()).foregroundStyle(Tokens.textTertiary)
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 6) {
+                    if note.isPinned {
+                        Image(systemName: "pin.fill").font(.system(size: 11)).foregroundStyle(Tokens.primary)
+                    }
+                    Text(note.text)
+                }
+                Text("\(membersByID[note.authorMemberID]?.name ?? "?") · \(relativeDate(note.createdAt))")
+                    .font(Typo.caption()).foregroundStyle(Tokens.textTertiary)
+            }
         }
     }
 
@@ -97,6 +109,10 @@ struct NotesBoardView: View {
             membersByID = Dictionary(uniqueKeysWithValues: members.map { ($0.id, $0) })
             myMemberID = members.first?.id
             notes = try await repositories.group.fetchNotes(groupID: groupID)
+            // 보드를 열어 확인했으므로 가장 최신 공지 시각을 '읽음'으로 기록 → 홈 배너 NEW 해제.
+            if let latest = notes.map(\.createdAt).max()?.timeIntervalSince1970 {
+                lastSeen = max(lastSeen, latest)
+            }
         } catch {
             errorMessage = CKErrorMapper.userMessage(for: error)
         }
@@ -108,10 +124,12 @@ struct NotesBoardView: View {
         guard let me = myMemberID else { return }
         let text = InputValidator.memo(draft)
         guard !text.isEmpty else { return }
+        let authorName = membersByID[me]?.name ?? "누군가"
         do {
             _ = try await repositories.group.addNote(groupID: groupID, authorMemberID: me, text: text)
             draft = ""
             HapticManager.shared.success()
+            await NotificationService.shared.notifyAnnouncement(text: text, authorName: authorName)
             await load()
         } catch {
             errorMessage = "공지 저장에 실패했어요.\n(\(CKErrorMapper.userMessage(for: error)))"

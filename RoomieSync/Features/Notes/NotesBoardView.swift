@@ -23,7 +23,7 @@ struct NotesBoardView: View {
         List {
             Section {
                 HStack(spacing: Spacing.s) {
-                    TextField("공지·메모 입력 (예: 이번 주 분리수거는 일요일)", text: $draft, axis: .vertical)
+                    TextField("공지 입력 (예: 이번 주 분리수거는 일요일)", text: $draft, axis: .vertical)
                         .lineLimit(1...3)
                     Button {
                         Task { await add() }
@@ -38,7 +38,7 @@ struct NotesBoardView: View {
                 Section { HStack { Spacer(); ProgressView(); Spacer() } }
             } else if notes.isEmpty {
                 Section {
-                    Text("아직 공지가 없어요. 첫 메모를 남겨보세요.")
+                    Text("아직 공지가 없어요. 첫 공지를 남겨보세요.")
                         .font(Typo.caption()).foregroundStyle(Tokens.textSecondary)
                 }
             } else {
@@ -59,7 +59,7 @@ struct NotesBoardView: View {
                 }
             }
         }
-        .navigationTitle("공지·메모")
+        .navigationTitle("공지")
         .navigationBarTitleDisplayMode(.inline)
         .alert("문제가 발생했어요", isPresented: Binding(
             get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } }
@@ -114,7 +114,7 @@ struct NotesBoardView: View {
             HapticManager.shared.success()
             await load()
         } catch {
-            errorMessage = "메모 저장에 실패했어요.\n(\(CKErrorMapper.userMessage(for: error)))"
+            errorMessage = "공지 저장에 실패했어요.\n(\(CKErrorMapper.userMessage(for: error)))"
         }
     }
 

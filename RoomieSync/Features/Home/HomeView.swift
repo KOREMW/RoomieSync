@@ -25,12 +25,12 @@ struct HomeView: View {
                 headerSection
                     .padding(.horizontal, Spacing.l)
                     .padding(.top, Spacing.l)
+                GroupNotesCard(groupID: groupID)
                 if let vm = viewModel {
                     todayChoresCard(vm)
                         .contentShape(Rectangle())
                         .onTapGesture { onOpenChores() }
                     weeklySettlementCard(vm)
-                    GroupNotesCard(groupID: groupID)
                     distributionCard(vm)
                 } else {
                     ProgressView().padding(Spacing.xxl)

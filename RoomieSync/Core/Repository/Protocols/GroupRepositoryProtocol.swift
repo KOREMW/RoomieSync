@@ -10,8 +10,9 @@
 import Foundation
 
 public protocol GroupRepositoryProtocol: Sendable {
-    /// 그룹 생성 — 호스트 멤버 1 명 자동 포함.
-    func createGroup(name: String, hostName: String, hostAvatarColorHex: String) async throws -> Group
+    /// 그룹 생성 — 호스트 멤버 1 명 자동 포함. 모임 아이콘·색 지정.
+    func createGroup(name: String, icon: String, iconColorHex: String,
+                     hostName: String, hostAvatarColorHex: String) async throws -> Group
 
     /// 초대 코드로 그룹 조회.
     func findGroup(byInviteCode code: String) async throws -> Group

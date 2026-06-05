@@ -14,6 +14,8 @@ struct GroupCreateView: View {
 
     @Environment(\.repositories) private var repositories
     @State private var groupName: String = "우리집"
+    @State private var groupIcon: String = Group.defaultIcon
+    @State private var groupColorIndex: Int = 0
     @State private var hostName: String = ""
     @State private var selectedColorIndex: Int = 0
     @State private var generatedCode: String? = nil
@@ -21,11 +23,42 @@ struct GroupCreateView: View {
     @State private var isWorking: Bool = false
     @State private var errorMessage: String? = nil
 
+    /// 모임 아이콘 후보(이모지).
+    private static let groupIcons: [String] = [
+        "🏠", "🏡", "🏢", "🛏️", "🍳", "🛋️", "🚪", "🧹", "🐾", "🌿", "🎓", "⭐"
+    ]
+
     var body: some View {
         Form {
             Section("그룹 이름") {
-                TextField("예) 우리집", text: $groupName)
-                    .textInputAutocapitalization(.never)
+                HStack(spacing: Spacing.m) {
+                    ZStack {
+                        Circle().fill(Color(hex: AvatarPalette.hex(at: groupColorIndex)))
+                        Text(groupIcon).font(.system(size: 22))
+                    }
+                    .frame(width: 44, height: 44)
+                    TextField("예) 우리집", text: $groupName)
+                        .textInputAutocapitalization(.never)
+                }
+            }
+            Section("모임 아이콘") {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: Spacing.s) {
+                        ForEach(Self.groupIcons, id: \.self) { emoji in
+                            Text(emoji)
+                                .font(.system(size: 22))
+                                .frame(width: 40, height: 40)
+                                .background(groupIcon == emoji ? Tokens.surfaceHighlight : Tokens.surfaceMuted)
+                                .clipShape(Circle())
+                                .overlay { if groupIcon == emoji { Circle().stroke(Tokens.primary, lineWidth: 2) } }
+                                .onTapGesture { groupIcon = emoji }
+                        }
+                    }
+                    .padding(.vertical, 2)
+                }
+            }
+            Section("모임 아이콘 색") {
+                AvatarColorPicker(selectedIndex: $groupColorIndex)
             }
             Section("내 이름") {
                 TextField("이름을 입력하세요", text: $hostName)
@@ -86,6 +119,8 @@ struct GroupCreateView: View {
             let color = AvatarPalette.hex(at: selectedColorIndex)
             let group = try await repositories.group.createGroup(
                 name: InputValidator.groupName(groupName),
+                icon: groupIcon,
+                iconColorHex: AvatarPalette.hex(at: groupColorIndex),
                 hostName: InputValidator.name(hostName),
                 hostAvatarColorHex: color
             )

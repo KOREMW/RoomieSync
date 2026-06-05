@@ -39,12 +39,14 @@ public actor FirestoreGroupRepository: GroupRepositoryProtocol {
 
     public init() {}
 
-    public func createGroup(name: String, hostName: String, hostAvatarColorHex: String) async throws -> Group {
+    public func createGroup(name: String, icon: String, iconColorHex: String,
+                            hostName: String, hostAvatarColorHex: String) async throws -> Group {
         await FirebaseAuthGate.shared.ensureSignedIn()
         let groupID = UUID()
         let host = Member(name: hostName, avatarColorHex: hostAvatarColorHex, groupID: groupID)
         let group = Group(id: groupID, name: name,
-                          inviteCode: Group.generateInviteCode(), memberIDs: [host.id])
+                          inviteCode: Group.generateInviteCode(), memberIDs: [host.id],
+                          icon: icon, iconColorHex: iconColorHex)
         let uid = currentUID()
         // 그룹 격리(#14): 그룹 doc 에 멤버 uid 목록, 멤버 doc 에 소유 uid 기록.
         var groupDict = group.fsDict

@@ -24,14 +24,17 @@ public actor InMemoryGroupRepository: GroupRepositoryProtocol {
         }
     }
 
-    public func createGroup(name: String, hostName: String, hostAvatarColorHex: String) async throws -> Group {
+    public func createGroup(name: String, icon: String, iconColorHex: String,
+                            hostName: String, hostAvatarColorHex: String) async throws -> Group {
         let groupID = UUID()
         let host = Member(name: hostName, avatarColorHex: hostAvatarColorHex, groupID: groupID)
         let group = Group(
             id: groupID,
             name: name,
             inviteCode: Group.generateInviteCode(),
-            memberIDs: [host.id]
+            memberIDs: [host.id],
+            icon: icon,
+            iconColorHex: iconColorHex
         )
         groups[group.id] = group
         members[host.id] = host

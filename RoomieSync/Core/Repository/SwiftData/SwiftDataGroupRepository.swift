@@ -16,11 +16,14 @@ import SwiftData
 @ModelActor
 public actor SwiftDataGroupRepository: GroupRepositoryProtocol {
 
-    public func createGroup(name: String, hostName: String, hostAvatarColorHex: String) async throws -> Group {
+    public func createGroup(name: String, icon: String, iconColorHex: String,
+                            hostName: String, hostAvatarColorHex: String) async throws -> Group {
         let groupEntity = GroupEntity(
             name: name,
             inviteCode: Group.generateInviteCode()
         )
+        groupEntity.icon = icon
+        groupEntity.iconColorHex = iconColorHex
         modelContext.insert(groupEntity)
 
         let host = MemberEntity(

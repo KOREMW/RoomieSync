@@ -17,7 +17,7 @@ import SwiftData
 public actor SwiftDataGroupRepository: GroupRepositoryProtocol {
 
     public func createGroup(name: String, icon: String, iconColorHex: String,
-                            hostName: String, hostAvatarColorHex: String) async throws -> Group {
+                            hostName: String, hostAvatarColorHex: String, hostAvatarIcon: String) async throws -> Group {
         let groupEntity = GroupEntity(
             name: name,
             inviteCode: Group.generateInviteCode()
@@ -30,6 +30,7 @@ public actor SwiftDataGroupRepository: GroupRepositoryProtocol {
             name: hostName,
             avatarColorHex: hostAvatarColorHex
         )
+        host.avatarIcon = hostAvatarIcon
         host.group = groupEntity
         modelContext.insert(host)
 
@@ -64,12 +65,13 @@ public actor SwiftDataGroupRepository: GroupRepositoryProtocol {
         return entity.toDomain()
     }
 
-    public func addMember(toGroup groupID: UUID, name: String, avatarColorHex: String) async throws -> Member {
+    public func addMember(toGroup groupID: UUID, name: String, avatarColorHex: String, avatarIcon: String) async throws -> Member {
         let group = try fetchGroupEntity(id: groupID)
         guard (group.members ?? []).count < 6 else {
             throw RepositoryError.invalidInput(reason: "그룹 최대 인원(6명) 초과")
         }
         let member = MemberEntity(name: name, avatarColorHex: avatarColorHex)
+        member.avatarIcon = avatarIcon
         member.group = group
         modelContext.insert(member)
         do {
@@ -99,6 +101,19 @@ public actor SwiftDataGroupRepository: GroupRepositoryProtocol {
         }
         member.bankName = bankName
         member.accountNumber = accountNumber
+        do { try modelContext.save() } catch {
+            throw RepositoryError.persistenceFailure(underlying: error.localizedDescription)
+        }
+        return member.toDomain()
+    }
+
+    public func updateMemberAvatar(_ memberID: UUID, avatarColorHex: String, avatarIcon: String) async throws -> Member {
+        let predicate = #Predicate<MemberEntity> { $0.id == memberID }
+        guard let member = try modelContext.fetch(FetchDescriptor<MemberEntity>(predicate: predicate)).first else {
+            throw RepositoryError.notFound
+        }
+        member.avatarColorHex = avatarColorHex
+        member.avatarIcon = avatarIcon
         do { try modelContext.save() } catch {
             throw RepositoryError.persistenceFailure(underlying: error.localizedDescription)
         }

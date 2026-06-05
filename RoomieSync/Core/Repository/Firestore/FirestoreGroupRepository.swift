@@ -40,10 +40,11 @@ public actor FirestoreGroupRepository: GroupRepositoryProtocol {
     public init() {}
 
     public func createGroup(name: String, icon: String, iconColorHex: String,
-                            hostName: String, hostAvatarColorHex: String) async throws -> Group {
+                            hostName: String, hostAvatarColorHex: String, hostAvatarIcon: String) async throws -> Group {
         await FirebaseAuthGate.shared.ensureSignedIn()
         let groupID = UUID()
-        let host = Member(name: hostName, avatarColorHex: hostAvatarColorHex, groupID: groupID)
+        let host = Member(name: hostName, avatarColorHex: hostAvatarColorHex,
+                          avatarIcon: hostAvatarIcon, groupID: groupID)
         let group = Group(id: groupID, name: name,
                           inviteCode: Group.generateInviteCode(), memberIDs: [host.id],
                           icon: icon, iconColorHex: iconColorHex)
@@ -84,9 +85,9 @@ public actor FirestoreGroupRepository: GroupRepositoryProtocol {
         return group
     }
 
-    public func addMember(toGroup groupID: UUID, name: String, avatarColorHex: String) async throws -> Member {
+    public func addMember(toGroup groupID: UUID, name: String, avatarColorHex: String, avatarIcon: String) async throws -> Member {
         await FirebaseAuthGate.shared.ensureSignedIn()
-        let member = Member(name: name, avatarColorHex: avatarColorHex, groupID: groupID)
+        let member = Member(name: name, avatarColorHex: avatarColorHex, avatarIcon: avatarIcon, groupID: groupID)
         let groupRef = groups.document(groupID.uuidString)
         let memberRef = membersCol.document(member.id.uuidString)
         let uid = currentUID()
@@ -149,6 +150,17 @@ public actor FirestoreGroupRepository: GroupRepositoryProtocol {
         try await ref.updateData(["bankName": bankName, "accountNumber": accountNumber])
         member.bankName = bankName
         member.accountNumber = accountNumber
+        return member
+    }
+
+    public func updateMemberAvatar(_ memberID: UUID, avatarColorHex: String, avatarIcon: String) async throws -> Member {
+        await FirebaseAuthGate.shared.ensureSignedIn()
+        let ref = membersCol.document(memberID.uuidString)
+        let doc = try await ref.getDocument()
+        guard let data = doc.data(), var member = Member(fs: data) else { throw RepositoryError.notFound }
+        try await ref.updateData(["avatarColorHex": avatarColorHex, "avatarIcon": avatarIcon])
+        member.avatarColorHex = avatarColorHex
+        member.avatarIcon = avatarIcon
         return member
     }
 

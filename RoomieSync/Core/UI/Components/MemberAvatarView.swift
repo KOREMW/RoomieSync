@@ -26,9 +26,14 @@ public struct MemberAvatarView: View {
         ZStack {
             Circle()
                 .fill(Color(hex: member.avatarColorHex).opacity(0.18))
-            Text(member.initials)
-                .font(.system(size: size * 0.4, weight: .semibold))
-                .foregroundStyle(Color(hex: member.avatarColorHex))
+            if member.avatarIcon.isEmpty {
+                Text(member.initials)
+                    .font(.system(size: size * 0.4, weight: .semibold))
+                    .foregroundStyle(Color(hex: member.avatarColorHex))
+            } else {
+                Text(member.avatarIcon)
+                    .font(.system(size: size * 0.5))
+            }
         }
         .frame(width: size, height: size)
         .overlay(

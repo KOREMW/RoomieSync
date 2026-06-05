@@ -24,6 +24,12 @@ struct MyPageView: View {
     @State private var nameSaved: Bool = false
     @State private var codeCopied: Bool = false
 
+    // 내 아바타 (색·아이콘)
+    @State private var myAvatarColorIndex: Int = 0
+    @State private var myAvatarIcon: String = ""
+    @State private var isSavingAvatar: Bool = false
+    @State private var avatarSaved: Bool = false
+
     // 모임 정보 (이름·아이콘·색)
     @State private var groupName: String = ""
     @State private var groupIcon: String = Group.defaultIcon
@@ -131,6 +137,40 @@ struct MyPageView: View {
                               myName.trimmingCharacters(in: .whitespaces).isEmpty ||
                               isSavingName)
                 }
+            }
+
+            // MARK: 내 아바타 (색·아이콘)
+            Section("내 아바타") {
+                HStack {
+                    Spacer()
+                    // 미리보기
+                    MemberAvatarView(
+                        member: Member(name: myName,
+                                       avatarColorHex: AvatarPalette.hex(at: myAvatarColorIndex),
+                                       avatarIcon: myAvatarIcon, groupID: groupID),
+                        size: 56
+                    )
+                    Spacer()
+                }
+                AvatarColorPicker(selectedIndex: $myAvatarColorIndex)
+                    .onChange(of: myAvatarColorIndex) { _, _ in avatarSaved = false }
+                AvatarIconPicker(selected: $myAvatarIcon)
+                    .onChange(of: myAvatarIcon) { _, _ in avatarSaved = false }
+                Button {
+                    Task { await saveAvatar() }
+                } label: {
+                    HStack {
+                        Spacer()
+                        if isSavingAvatar { ProgressView() }
+                        else {
+                            Label(avatarSaved ? "저장됨" : "아바타 저장",
+                                  systemImage: avatarSaved ? "checkmark" : "tray.and.arrow.down")
+                                .fontWeight(.semibold)
+                        }
+                        Spacer()
+                    }
+                }
+                .disabled(myMemberID == nil || isSavingAvatar)
             }
 
             // MARK: 정산 계좌
@@ -315,11 +355,32 @@ struct MyPageView: View {
             if let me = members.first {
                 myMemberID = me.id
                 myName = me.name
+                myAvatarColorIndex = AvatarPalette.hexValues.firstIndex(of: me.avatarColorHex) ?? 0
+                myAvatarIcon = me.avatarIcon
                 draftBank = me.bankName ?? ""
                 draftAccount = BankAccountFormatter.format(me.accountNumber ?? "", bank: me.bankName ?? "")
             }
         } catch {
             // 프로필 로드 실패는 조용히 무시(마이페이지의 알림 설정은 계속 사용 가능)
+        }
+    }
+
+    @MainActor
+    private func saveAvatar() async {
+        guard let id = myMemberID else { return }
+        isSavingAvatar = true
+        defer { isSavingAvatar = false }
+        do {
+            _ = try await repositories.group.updateMemberAvatar(
+                id,
+                avatarColorHex: AvatarPalette.hex(at: myAvatarColorIndex),
+                avatarIcon: myAvatarIcon
+            )
+            avatarSaved = true
+            HapticManager.shared.success()
+        } catch {
+            HapticManager.shared.error()
+            errorMessage = "아바타 저장에 실패했어요.\n(\(CKErrorMapper.userMessage(for: error)))"
         }
     }
 

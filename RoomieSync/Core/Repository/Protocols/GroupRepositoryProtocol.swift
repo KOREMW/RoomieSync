@@ -10,9 +10,9 @@
 import Foundation
 
 public protocol GroupRepositoryProtocol: Sendable {
-    /// 그룹 생성 — 호스트 멤버 1 명 자동 포함. 모임 아이콘·색 지정.
+    /// 그룹 생성 — 호스트 멤버 1 명 자동 포함. 모임 아이콘·색 + 호스트 아바타 아이콘 지정.
     func createGroup(name: String, icon: String, iconColorHex: String,
-                     hostName: String, hostAvatarColorHex: String) async throws -> Group
+                     hostName: String, hostAvatarColorHex: String, hostAvatarIcon: String) async throws -> Group
 
     /// 초대 코드로 그룹 조회.
     func findGroup(byInviteCode code: String) async throws -> Group
@@ -24,13 +24,16 @@ public protocol GroupRepositoryProtocol: Sendable {
     func updateGroupInfo(_ groupID: UUID, name: String, icon: String, iconColorHex: String) async throws -> Group
 
     /// 그룹에 멤버 추가 — 최대 6 명 (계획서 2 P0 ①).
-    func addMember(toGroup groupID: UUID, name: String, avatarColorHex: String) async throws -> Member
+    func addMember(toGroup groupID: UUID, name: String, avatarColorHex: String, avatarIcon: String) async throws -> Member
 
     /// 멤버 이름 변경 — 마이페이지에서 본인 이름 수정.
     func updateMemberName(_ memberID: UUID, name: String) async throws -> Member
 
     /// 멤버 정산 계좌 저장 — 다른 멤버가 송금 시 조회.
     func updateMemberAccount(_ memberID: UUID, bankName: String, accountNumber: String) async throws -> Member
+
+    /// 멤버 아바타(색·아이콘) 변경.
+    func updateMemberAvatar(_ memberID: UUID, avatarColorHex: String, avatarIcon: String) async throws -> Member
 
     /// 그룹 내 멤버 전체.
     func fetchMembers(ofGroup groupID: UUID) async throws -> [Member]

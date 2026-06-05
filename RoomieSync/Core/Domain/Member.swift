@@ -15,6 +15,8 @@ public struct Member: Identifiable, Hashable, Sendable, Codable {
     public let id: UUID
     public var name: String
     public var avatarColorHex: String   // "#RRGGBB"
+    /// 아바타 아이콘(이모지). 빈 문자열이면 이름 이니셜로 표시(기본).
+    public var avatarIcon: String
     public var joinedAt: Date
 
     /// 그룹 소속 — Domain Layer 에서는 ID 만 보관, 관계는 Repository 가 해석
@@ -28,6 +30,7 @@ public struct Member: Identifiable, Hashable, Sendable, Codable {
         id: UUID = UUID(),
         name: String,
         avatarColorHex: String,
+        avatarIcon: String = "",
         joinedAt: Date = .now,
         groupID: UUID,
         bankName: String? = nil,
@@ -36,10 +39,24 @@ public struct Member: Identifiable, Hashable, Sendable, Codable {
         self.id = id
         self.name = name
         self.avatarColorHex = avatarColorHex
+        self.avatarIcon = avatarIcon
         self.joinedAt = joinedAt
         self.groupID = groupID
         self.bankName = bankName
         self.accountNumber = accountNumber
+    }
+
+    /// 구버전 데이터(avatarIcon 키 없음) 디코딩 시 빈 문자열로 기본 처리.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try c.decode(UUID.self, forKey: .id)
+        self.name = try c.decode(String.self, forKey: .name)
+        self.avatarColorHex = try c.decode(String.self, forKey: .avatarColorHex)
+        self.avatarIcon = try c.decodeIfPresent(String.self, forKey: .avatarIcon) ?? ""
+        self.joinedAt = try c.decode(Date.self, forKey: .joinedAt)
+        self.groupID = try c.decode(UUID.self, forKey: .groupID)
+        self.bankName = try c.decodeIfPresent(String.self, forKey: .bankName)
+        self.accountNumber = try c.decodeIfPresent(String.self, forKey: .accountNumber)
     }
 
     /// 계좌 등록 여부.

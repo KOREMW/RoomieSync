@@ -18,6 +18,7 @@ struct GroupCreateView: View {
     @State private var groupColorIndex: Int = 0
     @State private var hostName: String = ""
     @State private var selectedColorIndex: Int = 0
+    @State private var hostAvatarIcon: String = ""
     @State private var generatedCode: String? = nil
     @State private var generatedGroupID: UUID? = nil
     @State private var isWorking: Bool = false
@@ -65,6 +66,9 @@ struct GroupCreateView: View {
             }
             Section("내 아바타 색") {
                 AvatarColorPicker(selectedIndex: $selectedColorIndex)
+            }
+            Section("내 아바타 아이콘") {
+                AvatarIconPicker(selected: $hostAvatarIcon)
             }
 
             if let code = generatedCode {
@@ -122,7 +126,8 @@ struct GroupCreateView: View {
                 icon: groupIcon,
                 iconColorHex: AvatarPalette.hex(at: groupColorIndex),
                 hostName: InputValidator.name(hostName),
-                hostAvatarColorHex: color
+                hostAvatarColorHex: color,
+                hostAvatarIcon: hostAvatarIcon
             )
             generatedCode = group.inviteCode
             generatedGroupID = group.id
@@ -140,6 +145,7 @@ struct GroupJoinView: View {
     @State private var code: String = ""
     @State private var myName: String = ""
     @State private var selectedColorIndex: Int = 1
+    @State private var avatarIcon: String = ""
     @State private var isWorking: Bool = false
     @State private var errorMessage: String? = nil
 
@@ -159,6 +165,9 @@ struct GroupJoinView: View {
             }
             Section("내 아바타 색") {
                 AvatarColorPicker(selectedIndex: $selectedColorIndex)
+            }
+            Section("내 아바타 아이콘") {
+                AvatarIconPicker(selected: $avatarIcon)
             }
 
             if let errorMessage {
@@ -191,7 +200,8 @@ struct GroupJoinView: View {
             _ = try await repositories.group.addMember(
                 toGroup: group.id,
                 name: InputValidator.name(myName),
-                avatarColorHex: color
+                avatarColorHex: color,
+                avatarIcon: avatarIcon
             )
             onJoined(group.id)
         } catch RepositoryError.notFound {

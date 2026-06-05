@@ -75,6 +75,7 @@ extension Member {
             "id": id.uuidString,
             "name": name,
             "avatarColorHex": avatarColorHex,
+            "avatarIcon": avatarIcon,
             "joinedAt": FSMap.epoch(joinedAt),
             "groupID": groupID.uuidString
         ]
@@ -88,7 +89,9 @@ extension Member {
               let color = FSMap.str(d["avatarColorHex"]),
               let joined = FSMap.date(d["joinedAt"]),
               let gid = FSMap.uuid(d["groupID"]) else { return nil }
-        self.init(id: id, name: name, avatarColorHex: color, joinedAt: joined, groupID: gid,
+        self.init(id: id, name: name, avatarColorHex: color,
+                  avatarIcon: FSMap.str(d["avatarIcon"]) ?? "",
+                  joinedAt: joined, groupID: gid,
                   bankName: FSMap.str(d["bankName"]), accountNumber: FSMap.str(d["accountNumber"]))
     }
 }

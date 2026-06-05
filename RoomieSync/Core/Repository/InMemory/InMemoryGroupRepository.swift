@@ -25,9 +25,10 @@ public actor InMemoryGroupRepository: GroupRepositoryProtocol {
     }
 
     public func createGroup(name: String, icon: String, iconColorHex: String,
-                            hostName: String, hostAvatarColorHex: String) async throws -> Group {
+                            hostName: String, hostAvatarColorHex: String, hostAvatarIcon: String) async throws -> Group {
         let groupID = UUID()
-        let host = Member(name: hostName, avatarColorHex: hostAvatarColorHex, groupID: groupID)
+        let host = Member(name: hostName, avatarColorHex: hostAvatarColorHex,
+                          avatarIcon: hostAvatarIcon, groupID: groupID)
         let group = Group(
             id: groupID,
             name: name,
@@ -62,12 +63,12 @@ public actor InMemoryGroupRepository: GroupRepositoryProtocol {
         return group
     }
 
-    public func addMember(toGroup groupID: UUID, name: String, avatarColorHex: String) async throws -> Member {
+    public func addMember(toGroup groupID: UUID, name: String, avatarColorHex: String, avatarIcon: String) async throws -> Member {
         guard var group = groups[groupID] else { throw RepositoryError.notFound }
         guard group.memberIDs.count < 6 else {
             throw RepositoryError.invalidInput(reason: "그룹 최대 인원(6명) 초과")
         }
-        let member = Member(name: name, avatarColorHex: avatarColorHex, groupID: groupID)
+        let member = Member(name: name, avatarColorHex: avatarColorHex, avatarIcon: avatarIcon, groupID: groupID)
         members[member.id] = member
         group.memberIDs.append(member.id)
         groups[groupID] = group
@@ -85,6 +86,14 @@ public actor InMemoryGroupRepository: GroupRepositoryProtocol {
         guard var member = members[memberID] else { throw RepositoryError.notFound }
         member.bankName = bankName
         member.accountNumber = accountNumber
+        members[memberID] = member
+        return member
+    }
+
+    public func updateMemberAvatar(_ memberID: UUID, avatarColorHex: String, avatarIcon: String) async throws -> Member {
+        guard var member = members[memberID] else { throw RepositoryError.notFound }
+        member.avatarColorHex = avatarColorHex
+        member.avatarIcon = avatarIcon
         members[memberID] = member
         return member
     }

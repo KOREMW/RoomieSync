@@ -15,6 +15,7 @@ public final class MemberEntity {
     public var id: UUID = UUID()
     public var name: String = ""
     public var avatarColorHex: String = "#4F46E5"   // 기본은 Primary
+    public var avatarIcon: String = ""              // 빈 문자열이면 이니셜 표시
     public var joinedAt: Date = Date()
     public var bankName: String? = nil
     public var accountNumber: String? = nil
@@ -45,6 +46,7 @@ public extension MemberEntity {
             id: id,
             name: name,
             avatarColorHex: avatarColorHex,
+            avatarIcon: avatarIcon,
             joinedAt: joinedAt,
             groupID: group?.id ?? UUID(),   // 정상 데이터라면 항상 group 존재
             bankName: bankName,
@@ -55,6 +57,7 @@ public extension MemberEntity {
     func apply(_ domain: Member) {
         self.name = domain.name
         self.avatarColorHex = domain.avatarColorHex
+        self.avatarIcon = domain.avatarIcon
         self.joinedAt = domain.joinedAt
         self.bankName = domain.bankName
         self.accountNumber = domain.accountNumber

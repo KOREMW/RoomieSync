@@ -50,14 +50,6 @@ struct HomeView: View {
             if viewModel != nil { Task { await viewModel?.load() } }
         }
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                Button { showGroupSwitcher = true } label: {
-                    Image(systemName: "line.3.horizontal")
-                        .foregroundStyle(Tokens.textPrimary)
-                }
-            }
-        }
         .sheet(isPresented: $showGroupSwitcher) {
             GroupSwitcherSheet(currentGroupID: groupID)
         }
@@ -70,16 +62,28 @@ struct HomeView: View {
     private var headerSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             if let vm = viewModel, !vm.groupName.isEmpty {
-                HStack(spacing: Spacing.s) {
-                    ZStack {
-                        Circle().fill(Color(hex: vm.groupColorHex))
-                        Text(vm.groupIcon).font(.system(size: 18))
+                Button {
+                    showGroupSwitcher = true
+                } label: {
+                    HStack(spacing: Spacing.s) {
+                        ZStack {
+                            Circle().fill(Color(hex: vm.groupColorHex))
+                            Text(vm.groupIcon).font(.system(size: 18))
+                        }
+                        .frame(width: 34, height: 34)
+                        Text(vm.groupName)
+                            .font(Typo.sectionTitle())
+                            .foregroundStyle(Tokens.textPrimary)
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(Tokens.textSecondary)
+                        Text("모임 변경")
+                            .font(Typo.caption())
+                            .foregroundStyle(Tokens.textTertiary)
                     }
-                    .frame(width: 34, height: 34)
-                    Text(vm.groupName)
-                        .font(Typo.sectionTitle())
-                        .foregroundStyle(Tokens.textPrimary)
+                    .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
             }
             VStack(alignment: .leading, spacing: 4) {
                 Text("안녕하세요, \(viewModel?.greetingName ?? "")님 👋")

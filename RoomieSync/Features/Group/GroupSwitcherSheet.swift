@@ -16,6 +16,7 @@ struct GroupSwitcherSheet: View {
 
     @State private var groups: [Group] = []
     @State private var isLoading = true
+    @State private var editingGroup: Group? = nil
 
     var body: some View {
         NavigationStack {
@@ -27,29 +28,43 @@ struct GroupSwitcherSheet: View {
                         Text("표시할 모임이 없어요").foregroundStyle(Tokens.textSecondary)
                     } else {
                         ForEach(groups) { group in
-                            Button {
-                                currentGroupIDString = group.id.uuidString
-                                dismiss()
-                            } label: {
-                                HStack(spacing: Spacing.m) {
-                                    ZStack {
-                                        Circle().fill(Color(hex: group.iconColorHex))
-                                        Text(group.icon).font(.system(size: 18))
+                            HStack(spacing: Spacing.m) {
+                                // 전환 (행 본문 탭)
+                                Button {
+                                    currentGroupIDString = group.id.uuidString
+                                    dismiss()
+                                } label: {
+                                    HStack(spacing: Spacing.m) {
+                                        ZStack {
+                                            Circle().fill(Color(hex: group.iconColorHex))
+                                            Text(group.icon).font(.system(size: 18))
+                                        }
+                                        .frame(width: 36, height: 36)
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(group.name).foregroundStyle(Tokens.textPrimary)
+                                            Text("멤버 \(group.memberIDs.count)명")
+                                                .font(Typo.caption()).foregroundStyle(Tokens.textSecondary)
+                                        }
+                                        Spacer()
+                                        if group.id == currentGroupID {
+                                            Image(systemName: "checkmark.circle.fill").foregroundStyle(Tokens.primary)
+                                        }
                                     }
-                                    .frame(width: 36, height: 36)
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text(group.name).foregroundStyle(Tokens.textPrimary)
-                                        Text("멤버 \(group.memberIDs.count)명")
-                                            .font(Typo.caption()).foregroundStyle(Tokens.textSecondary)
-                                    }
-                                    Spacer()
-                                    if group.id == currentGroupID {
-                                        Image(systemName: "checkmark.circle.fill").foregroundStyle(Tokens.primary)
-                                    }
+                                    .contentShape(Rectangle())
                                 }
-                                .contentShape(Rectangle())   // 빈 공간 포함 행 전체 탭
+                                .buttonStyle(.plain)
+
+                                // 수정 (모임 정보 편집)
+                                Button {
+                                    editingGroup = group
+                                } label: {
+                                    Image(systemName: "pencil.circle")
+                                        .font(.system(size: 20))
+                                        .foregroundStyle(Tokens.textSecondary)
+                                }
+                                .buttonStyle(.borderless)
+                                .accessibilityLabel("\(group.name) 모임 정보 수정")
                             }
-                            .buttonStyle(.plain)
                         }
                     }
                 }
@@ -69,11 +84,17 @@ struct GroupSwitcherSheet: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) { Button("닫기") { dismiss() } }
             }
-            .task {
-                do { groups = try await repositories.group.fetchAllGroups() }
-                catch { groups = [] }
-                isLoading = false
+            .task { await reload() }
+            .sheet(item: $editingGroup) { group in
+                GroupEditView(groupID: group.id, onSaved: { Task { await reload() } })
             }
         }
+    }
+
+    @MainActor
+    private func reload() async {
+        do { groups = try await repositories.group.fetchAllGroups() }
+        catch { groups = [] }
+        isLoading = false
     }
 }

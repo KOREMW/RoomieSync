@@ -11,7 +11,9 @@ import SwiftUI
 
 struct MainTabView: View {
     let groupID: UUID
+    @Environment(\.repositories) private var repositories
     @State private var tab: Int = 0
+    @State private var myAvatarIcon: String = ""
 
     var body: some View {
         TabView(selection: $tab) {
@@ -32,10 +34,47 @@ struct MainTabView: View {
                 .tag(3)
 
             NavigationStack { MyPageView(groupID: groupID) }
-                .tabItem { Label("마이페이지", systemImage: "person.crop.circle.fill") }
+                .tabItem { myPageTabItem }
                 .tag(4)
         }
         .tint(Tokens.primary)
+        .task { await loadAvatarIcon() }
+        // 탭 전환 시마다 갱신 → 마이페이지에서 아바타를 바꾸면 탭 아이콘도 반영.
+        .onChange(of: tab) { _, _ in Task { await loadAvatarIcon() } }
+    }
+
+    @ViewBuilder
+    private var myPageTabItem: some View {
+        if let image = Self.emojiTabImage(myAvatarIcon) {
+            Label { Text("마이페이지") } icon: { Image(uiImage: image) }
+        } else {
+            Label("마이페이지", systemImage: "person.crop.circle.fill")
+        }
+    }
+
+    private func loadAvatarIcon() async {
+        let members = (try? await repositories.group.fetchMembers(ofGroup: groupID)) ?? []
+        myAvatarIcon = members.first?.avatarIcon ?? ""
+    }
+
+    /// 이모지를 탭 아이콘용 UIImage 로 렌더링. 빈 문자열이면 nil(기본 SF Symbol 사용).
+    private static func emojiTabImage(_ emoji: String) -> UIImage? {
+        guard !emoji.isEmpty else { return nil }
+        let size = CGSize(width: 28, height: 28)
+        let renderer = UIGraphicsImageRenderer(size: size)
+        let image = renderer.image { _ in
+            let str = emoji as NSString
+            let font = UIFont.systemFont(ofSize: 24)
+            let textSize = str.size(withAttributes: [.font: font])
+            let rect = CGRect(
+                x: (size.width - textSize.width) / 2,
+                y: (size.height - textSize.height) / 2,
+                width: textSize.width,
+                height: textSize.height
+            )
+            str.draw(in: rect, withAttributes: [.font: font])
+        }
+        return image.withRenderingMode(.alwaysOriginal)
     }
 }
 

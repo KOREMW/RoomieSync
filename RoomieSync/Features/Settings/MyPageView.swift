@@ -30,17 +30,6 @@ struct MyPageView: View {
     @State private var isSavingAvatar: Bool = false
     @State private var avatarSaved: Bool = false
 
-    // 모임 정보 (이름·아이콘·색)
-    @State private var groupName: String = ""
-    @State private var groupIcon: String = Group.defaultIcon
-    @State private var groupColorIndex: Int = 0
-    @State private var isSavingGroup: Bool = false
-    @State private var groupInfoSaved: Bool = false
-
-    /// 모임 아이콘 후보(이모지).
-    private static let groupIcons: [String] = [
-        "🏠", "🏡", "🏢", "🛏️", "🍳", "🛋️", "🚪", "🧹", "🐾", "🌿", "🎓", "⭐"
-    ]
 
     // 정산 계좌 — 내 멤버 정보에 저장(동기화). 다른 멤버가 송금 시 조회.
     @State private var draftBank: String = ""
@@ -72,56 +61,6 @@ struct MyPageView: View {
 
     var body: some View {
         Form {
-            // MARK: 모임 정보 (이름·아이콘·색)
-            Section("모임 정보") {
-                HStack(spacing: Spacing.m) {
-                    ZStack {
-                        Circle().fill(Color(hex: AvatarPalette.hex(at: groupColorIndex)))
-                        Text(groupIcon).font(.system(size: 24))
-                    }
-                    .frame(width: 48, height: 48)
-                    TextField("모임 이름", text: $groupName)
-                        .onChange(of: groupName) { _, _ in groupInfoSaved = false }
-                }
-                // 아이콘 선택
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: Spacing.s) {
-                        ForEach(Self.groupIcons, id: \.self) { emoji in
-                            Text(emoji)
-                                .font(.system(size: 22))
-                                .frame(width: 40, height: 40)
-                                .background(groupIcon == emoji ? Tokens.surfaceHighlight : Tokens.surfaceMuted)
-                                .clipShape(Circle())
-                                .overlay {
-                                    if groupIcon == emoji {
-                                        Circle().stroke(Tokens.primary, lineWidth: 2)
-                                    }
-                                }
-                                .onTapGesture { groupIcon = emoji; groupInfoSaved = false }
-                        }
-                    }
-                    .padding(.vertical, 2)
-                }
-                // 아이콘 색 선택
-                AvatarColorPicker(selectedIndex: $groupColorIndex)
-                    .onChange(of: groupColorIndex) { _, _ in groupInfoSaved = false }
-                Button {
-                    Task { await saveGroupInfo() }
-                } label: {
-                    HStack {
-                        Spacer()
-                        if isSavingGroup { ProgressView() }
-                        else {
-                            Label(groupInfoSaved ? "저장됨" : "모임 정보 저장",
-                                  systemImage: groupInfoSaved ? "checkmark" : "tray.and.arrow.down")
-                                .fontWeight(.semibold)
-                        }
-                        Spacer()
-                    }
-                }
-                .disabled(isSavingGroup || groupName.trimmingCharacters(in: .whitespaces).isEmpty)
-            }
-
             // MARK: 프로필 (이름 수정)
             Section("내 프로필") {
                 HStack {
@@ -348,9 +287,6 @@ struct MyPageView: View {
         do {
             let group = try await repositories.group.fetchGroup(id: groupID)
             inviteCode = group.inviteCode
-            groupName = group.name
-            groupIcon = group.icon
-            groupColorIndex = AvatarPalette.hexValues.firstIndex(of: group.iconColorHex) ?? 0
             let members = try await repositories.group.fetchMembers(ofGroup: groupID)
             if let me = members.first {
                 myMemberID = me.id
@@ -384,27 +320,6 @@ struct MyPageView: View {
         }
     }
 
-    @MainActor
-    private func saveGroupInfo() async {
-        let trimmed = InputValidator.groupName(groupName)
-        guard !trimmed.isEmpty else { return }
-        isSavingGroup = true
-        defer { isSavingGroup = false }
-        do {
-            _ = try await repositories.group.updateGroupInfo(
-                groupID,
-                name: trimmed,
-                icon: groupIcon,
-                iconColorHex: AvatarPalette.hex(at: groupColorIndex)
-            )
-            groupName = trimmed
-            groupInfoSaved = true
-            HapticManager.shared.success()
-        } catch {
-            HapticManager.shared.error()
-            errorMessage = "모임 정보 저장에 실패했어요.\n(\(CKErrorMapper.userMessage(for: error)))"
-        }
-    }
 
     @MainActor
     private func saveName() async {

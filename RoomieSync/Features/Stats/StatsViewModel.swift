@@ -37,6 +37,8 @@ public struct Badge: Identifiable {
     public let icon: String      // SF Symbol
     public let earned: Bool
     public let detail: String
+    /// 미획득 시 진행도 표시(예: "3/10"). 획득했거나 표시 불필요하면 nil.
+    public var progressText: String? = nil
 }
 
 @MainActor
@@ -59,8 +61,25 @@ public final class StatsViewModel {
 
     // 게이미피케이션 (현재 사용자 기준, 완료 기록에서 파생)
     public private(set) var myStreakDays: Int = 0
+    public private(set) var myLongestStreak: Int = 0
     public private(set) var myTotalCompletions: Int = 0
     public private(set) var badges: [Badge] = []
+
+    // 레벨 (누적 난이도 가중 포인트 기반)
+    public private(set) var myPoints: Int = 0
+    public private(set) var myLevel: Int = 1
+    public private(set) var myLevelTitle: String = "살림 새내기"
+    public private(set) var levelIntoPoints: Int = 0     // 현재 레벨에서 모은 포인트
+    public private(set) var levelSpanPoints: Int = 1     // 다음 레벨까지 필요한 총 포인트
+    public var levelProgress: Double {
+        levelSpanPoints > 0 ? min(1, Double(levelIntoPoints) / Double(levelSpanPoints)) : 0
+    }
+    public var pointsToNextLevel: Int { max(0, levelSpanPoints - levelIntoPoints) }
+
+    // 주간 목표 (이번 주 난이도 가중 포인트)
+    public private(set) var myWeekPoints: Int = 0
+    public let weeklyGoal: Int = 14
+    public var weekProgress: Double { min(1, Double(myWeekPoints) / Double(weeklyGoal)) }
 
     public init(groupID: UUID, repositories: RepositoryBundle) {
         self.groupID = groupID
@@ -110,12 +129,6 @@ public final class StatsViewModel {
             // MVP — 최다 완료자
             mvp = memberCounts.first.map(\.member)
 
-            // 게이미피케이션 — 현재 사용자 기준 (전체 기록에서 파생)
-            let myCompletions = myID.map { id in allCompletions.filter { $0.memberID == id } } ?? []
-            myTotalCompletions = myCompletions.count
-            myStreakDays = currentStreak(from: myCompletions)
-            badges = buildBadges(total: myTotalCompletions, streak: myStreakDays, fairness: fairnessIndex)
-
             // 월별 지출 — 최근 6개월
             let allExpenses = try await expenseRepo.fetchExpenses(groupID: groupID, includeSettled: true)
             monthlySeries = buildMonthlySeries(allExpenses, monthsBack: 6)
@@ -126,6 +139,32 @@ public final class StatsViewModel {
             }
             totalSpending = thisMonth.reduce(Decimal(0)) { $0 + $1.amount }
             categorySpendings = buildCategorySpending(thisMonth)
+
+            // ===== 게이미피케이션 — 현재 사용자 기준 (전체 기록에서 파생) =====
+            let myCompletions = myID.map { id in allCompletions.filter { $0.memberID == id } } ?? []
+            myTotalCompletions = myCompletions.count
+            myStreakDays = currentStreak(from: myCompletions)
+            myLongestStreak = longestStreak(from: myCompletions)
+
+            // 난이도 가중 포인트 합 (가사별 점수). 가사가 삭제됐으면 보통(2) 가정.
+            func points(_ comps: [ChoreCompletion]) -> Int {
+                comps.reduce(0) { $0 + (pointsByChore[$1.choreID] ?? ChoreDifficulty.normal.points) }
+            }
+            myPoints = points(myCompletions)
+            let info = levelInfo(points: myPoints)
+            myLevel = info.level
+            myLevelTitle = info.title
+            levelIntoPoints = info.intoLevel
+            levelSpanPoints = info.span
+
+            let weekAgo = Calendar.current.date(byAdding: .day, value: -7, to: .now) ?? .now
+            myWeekPoints = points(myCompletions.filter { $0.completedAt >= weekAgo })
+
+            // 뱃지용 보조 집계
+            let hardCount = myCompletions.filter { (pointsByChore[$0.choreID] ?? 2) >= ChoreDifficulty.hard.points }.count
+            let myExpenseCount = allExpenses.filter { $0.paidByMemberID == myID }.count
+            badges = buildBadges(total: myTotalCompletions, longestStreak: myLongestStreak,
+                                 fairness: fairnessIndex, hardCount: hardCount, expenseCount: myExpenseCount)
         } catch {
             errorMessage = CKErrorMapper.userMessage(for: error)
         }
@@ -152,15 +191,66 @@ public final class StatsViewModel {
         return streak
     }
 
-    private func buildBadges(total: Int, streak: Int, fairness: Int) -> [Badge] {
-        [
-            Badge(title: "첫 완료", icon: "star.fill", earned: total >= 1, detail: "가사 1회 완료"),
-            Badge(title: "10회 달성", icon: "10.circle.fill", earned: total >= 10, detail: "누적 10회 완료"),
-            Badge(title: "30회 달성", icon: "30.circle.fill", earned: total >= 30, detail: "누적 30회 완료"),
-            Badge(title: "50회 달성", icon: "50.circle.fill", earned: total >= 50, detail: "누적 50회 완료"),
-            Badge(title: "3일 연속", icon: "flame.fill", earned: streak >= 3, detail: "3일 연속 완료"),
-            Badge(title: "7일 연속", icon: "flame.circle.fill", earned: streak >= 7, detail: "7일 연속 완료"),
-            Badge(title: "공정왕", icon: "scalemass.fill", earned: fairness >= 80, detail: "그룹 공정지수 80 이상")
+    /// 가장 긴 연속 완료 일수(역대 기록).
+    private func longestStreak(from completions: [ChoreCompletion]) -> Int {
+        let cal = Calendar.current
+        let days = Set(completions.map { cal.startOfDay(for: $0.completedAt) }).sorted()
+        guard !days.isEmpty else { return 0 }
+        var best = 1, current = 1
+        for i in 1..<days.count {
+            if cal.date(byAdding: .day, value: 1, to: days[i - 1]) == days[i] {
+                current += 1; best = max(best, current)
+            } else {
+                current = 1
+            }
+        }
+        return best
+    }
+
+    /// 누적 포인트 → 레벨/타이틀/현재 레벨 진행도.
+    /// 레벨 L 도달 누적 포인트 = 10 · L · (L-1)  → 레벨이 오를수록 더 많은 포인트 필요.
+    private func levelInfo(points: Int) -> (level: Int, title: String, intoLevel: Int, span: Int) {
+        func reach(_ level: Int) -> Int { 10 * level * (level - 1) }
+        var level = 1
+        while reach(level + 1) <= points { level += 1 }
+        let base = reach(level)
+        let next = reach(level + 1)
+        return (level, levelTitle(level), points - base, max(1, next - base))
+    }
+
+    private func levelTitle(_ level: Int) -> String {
+        switch level {
+        case 1:  return "살림 새내기"
+        case 2:  return "살림 입문"
+        case 3:  return "살림 견습"
+        case 4:  return "살림 능숙"
+        case 5:  return "살림 고수"
+        case 6:  return "살림 달인"
+        default: return "살림 마스터"
+        }
+    }
+
+    private func buildBadges(total: Int, longestStreak: Int, fairness: Int,
+                             hardCount: Int, expenseCount: Int) -> [Badge] {
+        func badge(_ title: String, _ icon: String, value: Int, target: Int, unit: String) -> Badge {
+            let earned = value >= target
+            return Badge(title: title, icon: icon, earned: earned,
+                         detail: "\(target)\(unit) 달성",
+                         progressText: earned ? nil : "\(min(value, target))/\(target)")
+        }
+        return [
+            badge("첫 완료", "star.fill", value: total, target: 1, unit: "회"),
+            badge("10회", "10.circle.fill", value: total, target: 10, unit: "회"),
+            badge("30회", "30.circle.fill", value: total, target: 30, unit: "회"),
+            badge("50회", "50.circle.fill", value: total, target: 50, unit: "회"),
+            badge("100회", "rosette", value: total, target: 100, unit: "회"),
+            badge("3일 연속", "flame.fill", value: longestStreak, target: 3, unit: "일"),
+            badge("7일 연속", "flame.circle.fill", value: longestStreak, target: 7, unit: "일"),
+            badge("14일 연속", "flame.circle", value: longestStreak, target: 14, unit: "일"),
+            badge("고난도 마스터", "bolt.fill", value: hardCount, target: 10, unit: "회"),
+            badge("기록왕", "doc.text.fill", value: expenseCount, target: 10, unit: "건"),
+            Badge(title: "공정왕", icon: "scalemass.fill", earned: fairness >= 80,
+                  detail: "공정지수 80 이상", progressText: fairness >= 80 ? nil : "\(fairness)/80")
         ]
     }
 

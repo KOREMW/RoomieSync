@@ -96,25 +96,52 @@ struct StatsView: View {
             HStack {
                 Text("나의 성취").font(Typo.sectionTitle())
                 Spacer()
+                Text("\(vm.myPoints)P")
+                    .font(.system(size: 12, weight: .bold))
+                    .padding(.horizontal, Spacing.s).padding(.vertical, 4)
+                    .background(Tokens.surfaceHighlight)
+                    .foregroundStyle(Tokens.primary)
+                    .clipShape(Capsule())
             }
 
-            // 연속 달성 + 총 완료
+            // 레벨 + 진행 바
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    ZStack {
+                        Circle().fill(Tokens.primary)
+                        Text("Lv.\(vm.myLevel)")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(.white)
+                    }
+                    .frame(width: 48, height: 48)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(vm.myLevelTitle).font(Typo.bodyBold())
+                        Text("다음 레벨까지 \(vm.pointsToNextLevel)P")
+                            .font(Typo.caption()).foregroundStyle(Tokens.textSecondary)
+                    }
+                    Spacer()
+                }
+                ProgressView(value: vm.levelProgress)
+                    .tint(Tokens.primary)
+            }
+            .padding(Spacing.m)
+            .background(Tokens.surfaceMuted)
+            .clipShape(RoundedRectangle(cornerRadius: Radius.m))
+
+            // 연속 달성(현재/최고) + 주간 목표
             HStack(spacing: Spacing.m) {
                 statPill(icon: "flame.fill",
                          value: "\(vm.myStreakDays)일",
-                         label: "연속 달성",
+                         label: "연속 (최고 \(vm.myLongestStreak)일)",
                          tint: vm.myStreakDays > 0 ? .orange : Tokens.textTertiary)
-                statPill(icon: "checkmark.seal.fill",
-                         value: "\(vm.myTotalCompletions)회",
-                         label: "누적 완료",
-                         tint: Tokens.primary)
+                weeklyGoalPill(vm)
             }
 
-            // 뱃지 그리드
+            // 뱃지 그리드 (미획득은 진행도 표시)
             let columns = Array(repeating: GridItem(.flexible(), spacing: Spacing.s), count: 4)
             LazyVGrid(columns: columns, spacing: Spacing.m) {
                 ForEach(vm.badges) { badge in
-                    VStack(spacing: 4) {
+                    VStack(spacing: 3) {
                         Image(systemName: badge.icon)
                             .font(.system(size: 26))
                             .foregroundStyle(badge.earned ? Tokens.primary : Tokens.textTertiary.opacity(0.4))
@@ -122,13 +149,46 @@ struct StatsView: View {
                             .font(.system(size: 10, weight: .medium))
                             .foregroundStyle(badge.earned ? Tokens.textPrimary : Tokens.textTertiary)
                             .multilineTextAlignment(.center)
+                            .lineLimit(1)
+                        if let progress = badge.progressText {
+                            Text(progress)
+                                .font(.system(size: 9))
+                                .foregroundStyle(Tokens.textTertiary)
+                        } else if badge.earned {
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 8, weight: .bold))
+                                .foregroundStyle(Tokens.success)
+                        }
                     }
                     .frame(maxWidth: .infinity)
-                    .opacity(badge.earned ? 1 : 0.55)
+                    .opacity(badge.earned ? 1 : 0.6)
                 }
             }
             .padding(.top, Spacing.xs)
         }
+    }
+
+    @ViewBuilder
+    private func weeklyGoalPill(_ vm: StatsViewModel) -> some View {
+        HStack(spacing: Spacing.s) {
+            ZStack {
+                Circle().stroke(Tokens.surfaceContainer, lineWidth: 5)
+                Circle().trim(from: 0, to: vm.weekProgress)
+                    .stroke(Tokens.primary, style: StrokeStyle(lineWidth: 5, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                Text("\(Int(vm.weekProgress * 100))%")
+                    .font(.system(size: 10, weight: .bold))
+            }
+            .frame(width: 40, height: 40)
+            VStack(alignment: .leading, spacing: 0) {
+                Text("\(vm.myWeekPoints)/\(vm.weeklyGoal)P").font(Typo.bodyBold())
+                Text("이번 주 목표").font(Typo.caption()).foregroundStyle(Tokens.textSecondary)
+            }
+            Spacer()
+        }
+        .padding(Spacing.m)
+        .background(Tokens.surfaceMuted)
+        .clipShape(RoundedRectangle(cornerRadius: Radius.m))
     }
 
     @ViewBuilder

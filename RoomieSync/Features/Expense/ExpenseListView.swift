@@ -62,9 +62,6 @@ struct ExpenseListView: View {
         .searchable(text: searchBinding, placement: .navigationBarDrawer(displayMode: .always),
                     prompt: "제목·메모·결제자 검색")
         .toolbar {
-            if let vm = viewModel {
-                ToolbarItem(placement: .topBarTrailing) { sortMenu(vm) }
-            }
             ToolbarItem(placement: .topBarTrailing) {
                 NavigationLink {
                     RecurringExpensesView(groupID: groupID)
@@ -124,7 +121,13 @@ struct ExpenseListView: View {
                 ForEach(ExpenseSort.allCases) { Text($0.label).tag($0) }
             }
         } label: {
-            Image(systemName: "arrow.up.arrow.down")
+            HStack(spacing: 2) {
+                Text(vm.sort.label).font(Typo.caption())
+                Image(systemName: "chevron.down").font(.system(size: 10, weight: .semibold))
+            }
+            .foregroundStyle(Tokens.textSecondary)
+            .padding(.horizontal, Spacing.s)
+            .padding(.vertical, 6)
         }
     }
 
@@ -196,6 +199,7 @@ struct ExpenseListView: View {
                 }
             }
             Spacer()
+            sortMenu(vm)
             Button { vm.filter = .all } label: {
                 Image(systemName: "arrow.counterclockwise")
                     .font(.system(size: 13, weight: .semibold))

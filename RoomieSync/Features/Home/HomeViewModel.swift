@@ -150,11 +150,12 @@ public final class HomeViewModel {
         guard let myID else { inboxUnreadCount = 0; return }
         let lastOpened = UserDefaults.standard.double(forKey: "inboxLastOpened.\(groupID.uuidString)")
         let cut = Date(timeIntervalSince1970: lastOpened)
+        let hidden = InboxDismissStore.dismissed(groupID)
         let reqs = (try? await groupRepo.fetchPaymentRequests(groupID: groupID))?
             .filter { $0.toMemberID == myID && $0.fromMemberID != myID } ?? []
         let notes = (try? await groupRepo.fetchNotes(groupID: groupID)) ?? []
-        inboxUnreadCount = reqs.filter { $0.createdAt > cut }.count
-            + notes.filter { $0.createdAt > cut }.count
+        inboxUnreadCount = reqs.filter { $0.createdAt > cut && !hidden.contains($0.id.uuidString) }.count
+            + notes.filter { $0.createdAt > cut && !hidden.contains($0.id.uuidString) }.count
     }
 
     private func drainWidgetActions() async {

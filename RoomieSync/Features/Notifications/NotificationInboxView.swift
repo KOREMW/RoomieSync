@@ -34,31 +34,56 @@ struct NotificationInboxView: View {
                     ContentUnavailableView("새 알림이 없어요", systemImage: "bell.slash",
                                            description: Text("송금 요청·공지가 여기에 모여요."))
                 } else {
-                    List(items) { item in
-                        HStack(spacing: Spacing.m) {
-                            ZStack {
-                                Circle().fill(item.tint.opacity(0.15))
-                                Image(systemName: item.icon).foregroundStyle(item.tint)
+                    List {
+                        ForEach(items) { item in
+                            HStack(spacing: Spacing.m) {
+                                ZStack {
+                                    Circle().fill(item.tint.opacity(0.15))
+                                    Image(systemName: item.icon).foregroundStyle(item.tint)
+                                }
+                                .frame(width: 38, height: 38)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(item.title).font(Typo.bodyBold())
+                                    Text(item.subtitle).font(Typo.caption())
+                                        .foregroundStyle(Tokens.textSecondary).lineLimit(2)
+                                }
+                                Spacer()
+                                Text(relativeDate(item.date))
+                                    .font(.system(size: 11)).foregroundStyle(Tokens.textTertiary)
                             }
-                            .frame(width: 38, height: 38)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(item.title).font(Typo.bodyBold())
-                                Text(item.subtitle).font(Typo.caption())
-                                    .foregroundStyle(Tokens.textSecondary).lineLimit(2)
+                            .padding(.vertical, 2)
+                            .swipeActions(edge: .trailing) {
+                                Button(role: .destructive) { delete(item) } label: {
+                                    Label("삭제", systemImage: "trash")
+                                }
                             }
-                            Spacer()
-                            Text(relativeDate(item.date))
-                                .font(.system(size: 11)).foregroundStyle(Tokens.textTertiary)
                         }
-                        .padding(.vertical, 2)
                     }
                 }
             }
             .navigationTitle("알림")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("닫기") { dismiss() } } }
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button(role: .destructive) { deleteAll() } label: { Text("전체 삭제") }
+                        .disabled(items.isEmpty)
+                }
+                ToolbarItem(placement: .confirmationAction) { Button("닫기") { dismiss() } }
+            }
             .task { await load() }
         }
+    }
+
+    private func delete(_ item: InboxItem) {
+        InboxDismissStore.add(item.id, groupID)
+        items.removeAll { $0.id == item.id }
+        HapticManager.shared.impact(.light)
+    }
+
+    private func deleteAll() {
+        InboxDismissStore.add(items.map { $0.id }, groupID)
+        items = []
+        HapticManager.shared.impact(.medium)
     }
 
     private func relativeDate(_ date: Date) -> String {
@@ -97,7 +122,9 @@ struct NotificationInboxView: View {
                 date: n.createdAt))
         }
 
-        items = result.sorted { $0.date > $1.date }
+        // 내 알림함에서 삭제(숨김)한 항목 제외
+        let hidden = InboxDismissStore.dismissed(groupID)
+        items = result.filter { !hidden.contains($0.id.uuidString) }.sorted { $0.date > $1.date }
         isLoading = false
 
         // 알림함 확인 시각 기록 → 홈 종 배지 해제

@@ -40,10 +40,15 @@ public final class HomeViewModel {
         self.expenseRepo = repositories.expense
     }
 
+    private var isLoadInFlight = false
+
     public func load() async {
+        // .task 와 .onAppear 가 동시에 호출해도 한 번만 (송금요청 알림 중복 방지)
+        guard !isLoadInFlight else { return }
+        isLoadInFlight = true
         isLoading = true
         errorMessage = nil
-        defer { isLoading = false }
+        defer { isLoading = false; isLoadInFlight = false }
         do {
             let members = try await groupRepo.fetchMembers(ofGroup: groupID)
             let group = try await groupRepo.fetchGroup(id: groupID)

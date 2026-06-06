@@ -14,6 +14,10 @@ struct MainTabView: View {
     @Environment(\.repositories) private var repositories
     @State private var tab: Int = 0
     @State private var myAvatarIcon: String = ""
+    @State private var router = AppRouter.shared
+    @State private var showSettlement = false
+    @State private var showNotes = false
+    @State private var showInbox = false
 
     var body: some View {
         TabView(selection: $tab) {
@@ -41,6 +45,23 @@ struct MainTabView: View {
         .task { await loadAvatarIcon() }
         // 탭 전환 시마다 갱신 → 마이페이지에서 아바타를 바꾸면 탭 아이콘도 반영.
         .onChange(of: tab) { _, _ in Task { await loadAvatarIcon() } }
+        // 알림 탭 → 라우트 처리 (콜드런치/백그라운드 둘 다)
+        .onChange(of: router.pending) { _, r in if let r { handleRoute(r) } }
+        .task { if let r = router.pending { handleRoute(r) } }
+        .sheet(isPresented: $showSettlement) { SettlementActionView(groupID: groupID) }
+        .sheet(isPresented: $showNotes) { NavigationStack { NotesBoardView(groupID: groupID) } }
+        .sheet(isPresented: $showInbox) { NotificationInboxView(groupID: groupID) }
+    }
+
+    private func handleRoute(_ route: AppRouter.Route) {
+        switch route {
+        case .chores:     tab = 1
+        case .expenses:   tab = 2
+        case .settlement: showSettlement = true
+        case .notes:      showNotes = true
+        case .inbox:      showInbox = true
+        }
+        AppRouter.shared.pending = nil
     }
 
     @ViewBuilder

@@ -72,7 +72,7 @@ public final class NotificationService: NSObject {
         content.body = "\(memberName)님, 잊지 말고 챙겨주세요!"
         content.sound = .default
         content.categoryIdentifier = NotificationCategory.choreDuty.rawValue
-        content.userInfo = ["choreID": chore.id.uuidString]
+        content.userInfo = ["choreID": chore.id.uuidString, "route": "chores"]
 
         var date = DateComponents()
         date.hour = hour
@@ -101,6 +101,8 @@ public final class NotificationService: NSObject {
         content.body = "한 번 확인해보세요. \(memberName)님!"
         content.sound = .default
         content.interruptionLevel = .passive   // 조용한 톤 (계획서 4.2)
+        content.categoryIdentifier = NotificationCategory.choreDuty.rawValue
+        content.userInfo = ["choreID": chore.id.uuidString, "route": "chores"]
 
         var date = DateComponents()
         date.hour = hour
@@ -126,6 +128,7 @@ public final class NotificationService: NSObject {
         content.title = "\(member.name)이 \(chore.title)을(를) 완료했어요 ✓"
         content.sound = .default
         content.interruptionLevel = .passive
+        content.userInfo = ["route": "chores"]
 
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 0.5, repeats: false)
         let request = UNNotificationRequest(
@@ -147,6 +150,7 @@ public final class NotificationService: NSObject {
         content.title = "\(payerName)이 \(expense.title) \(CurrencyFormatter.format(expense.amount))을 등록했어요"
         content.sound = nil   // 무음
         content.interruptionLevel = .passive
+        content.userInfo = ["route": "expenses"]
 
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 0.5, repeats: false)
         let request = UNNotificationRequest(
@@ -166,6 +170,7 @@ public final class NotificationService: NSObject {
         content.body = text
         content.sound = .default
         content.interruptionLevel = .active
+        content.userInfo = ["route": "notes"]
 
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 0.5, repeats: false)
         let request = UNNotificationRequest(
@@ -186,6 +191,7 @@ public final class NotificationService: NSObject {
         content.body = account.map { "\(amountStr) 보내주세요 · \($0)" } ?? "\(amountStr) 보내주세요"
         content.sound = .default
         content.interruptionLevel = .active
+        content.userInfo = ["route": "settlement"]
 
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 0.5, repeats: false)
         let request = UNNotificationRequest(
@@ -209,6 +215,7 @@ public final class NotificationService: NSObject {
         content.body = amountStr
         content.sound = .default
         content.categoryIdentifier = NotificationCategory.monthlySettlement.rawValue
+        content.userInfo = ["route": "settlement"]
 
         // 매월 마지막 날 추출 — Calendar 기반
         let calendar = Calendar.current
@@ -417,12 +424,21 @@ extension NotificationService: @preconcurrency UNUserNotificationCenterDelegate 
             }
         case "ACTION_SWAP":
             if let id = choreID { enqueue(.swapChore(id: id, at: .now)) }
+            route(to: .chores)
         case "ACTION_OPEN_SETTLE":
-            // .foreground 옵션으로 앱이 열린다(정산 화면은 지출 탭에서 진입).
-            break
+            route(to: .settlement)
+        case UNNotificationDefaultActionIdentifier:
+            // 알림 본문 탭 → userInfo["route"] 화면으로 이동
+            let key = response.notification.request.content.userInfo["route"] as? String
+            if let r = AppRouter.route(forKey: key) { route(to: r) }
         default:
             break
         }
         completionHandler()
+    }
+
+    /// 메인 액터에서 라우트 설정(알림 탭 → 화면 이동).
+    private func route(to r: AppRouter.Route) {
+        Task { @MainActor in AppRouter.shared.pending = r }
     }
 }

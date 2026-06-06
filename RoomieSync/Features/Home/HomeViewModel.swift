@@ -91,7 +91,7 @@ public final class HomeViewModel {
             await notifyOthersActivity(myID: currentUserID, chores: todayChores,
                                        completions: weekCompletions, expenses: pendingExpenses)
 
-            let myUndoneCount = todayChores.filter { $0.currentAssigneeID == currentUserID }.count
+            let myUndoneCount = todayChores.filter { ChoreRotation.assignee($0) == currentUserID }.count
             NotificationService.shared.setBadge(myUndoneCount)
 
             // 4주차: 위젯에 노출할 AppGroup 스냅샷 갱신 + 위젯 reload
@@ -106,14 +106,15 @@ public final class HomeViewModel {
 
     private func updateSharedSnapshot(group: Group, members: [Member], undoneForMe: Int) async {
         let items: [SharedSnapshot.ChoreItem] = todayChores.map { chore in
-            let assignee = members.first(where: { $0.id == chore.currentAssigneeID })
+            let assigneeID = ChoreRotation.assignee(chore)
+            let assignee = members.first(where: { $0.id == assigneeID })
             return SharedSnapshot.ChoreItem(
                 id: chore.id,
                 title: chore.title,
                 icon: chore.icon,
                 assigneeName: assignee?.name ?? "?",
                 assigneeColorHex: assignee?.avatarColorHex ?? "#4F46E5",
-                isMine: chore.currentAssigneeID == currentUserID,
+                isMine: assigneeID == currentUserID,
                 isCompleted: false
             )
         }

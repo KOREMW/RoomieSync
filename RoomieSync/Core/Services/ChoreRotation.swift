@@ -25,6 +25,46 @@ public enum ChoreRotation {
         return chore.rotationMemberIDs[next]
     }
 
+    // MARK: - 날짜 기준 담당자 (완료가 아니라 '날짜가 지나야' 회전)
+
+    /// rotationStartedAt 을 기준점(인덱스 0)으로, 주기가 한 번 지날 때마다 다음 멤버로 회전.
+    /// 완료 버튼을 눌러도 그날의 담당자는 그대로이고, 날짜(주/월)가 넘어가야 다음 사람으로 바뀐다.
+    public static func assigneeIndex(_ chore: Chore, on date: Date = .now) -> Int {
+        let count = chore.rotationMemberIDs.count
+        guard count > 0 else { return 0 }
+        let cal = Calendar.current
+        let start = cal.startOfDay(for: chore.rotationStartedAt)
+        let today = cal.startOfDay(for: date)
+        let periods: Int
+        switch chore.cycleType {
+        case .daily:
+            periods = max(0, cal.dateComponents([.day], from: start, to: today).day ?? 0)
+        case .weekly:
+            let days = max(0, cal.dateComponents([.day], from: start, to: today).day ?? 0)
+            periods = days / 7
+        case .monthly:
+            periods = max(0, cal.dateComponents([.month], from: start, to: today).month ?? 0)
+        case .once:
+            periods = 0   // 1회성은 회전 없음
+        }
+        return periods % count
+    }
+
+    /// 날짜 기준 현재(오늘) 담당자 멤버 ID.
+    public static func assignee(_ chore: Chore, on date: Date = .now) -> UUID {
+        let ids = chore.rotationMemberIDs
+        guard !ids.isEmpty else { return chore.currentAssigneeID }
+        return ids[assigneeIndex(chore, on: date)]
+    }
+
+    /// 날짜 기준 다음 차례 담당자 멤버 ID (1인 로테이션이면 nil).
+    public static func upcomingAssignee(_ chore: Chore, on date: Date = .now) -> UUID? {
+        let ids = chore.rotationMemberIDs
+        guard ids.count > 1 else { return nil }
+        let next = (assigneeIndex(chore, on: date) + 1) % ids.count
+        return ids[next]
+    }
+
     /// 완료 확정 시 호출 — assignee 를 다음 멤버로 회전하고 nextDueDate 갱신.
     public static func rotateToNext(_ chore: Chore, now: Date = .now) -> Chore {
         var updated = chore
@@ -36,15 +76,13 @@ public enum ChoreRotation {
 
     /// "오늘 못해요" 스왑 — 현재 멤버와 다음 멤버의 rotationMemberIDs 순서 교환.
     /// currentAssignee 도 다음 멤버로 이동 (계획서 6.3 당번 회피 → 다음 멤버에게 요청 → 수락 시 순서 교체).
-    public static func swapCurrentWithNext(_ chore: Chore) -> Chore {
+    public static func swapCurrentWithNext(_ chore: Chore, now: Date = .now) -> Chore {
         var updated = chore
-        guard chore.rotationMemberIDs.count > 1,
-              let curIdx = chore.rotationMemberIDs.firstIndex(of: chore.currentAssigneeID)
-        else { return chore }
+        guard chore.rotationMemberIDs.count > 1 else { return chore }
+        // 날짜 기준 '오늘 슬롯'과 다음 슬롯을 교환 → 오늘 담당이 다음 사람에게 넘어간다.
+        let curIdx = assigneeIndex(chore, on: now)
         let nextIdx = (curIdx + 1) % chore.rotationMemberIDs.count
         updated.rotationMemberIDs.swapAt(curIdx, nextIdx)
-        // currentAssignee 는 그대로 두면 swap 후 같은 사람이지만, 의도는 다음 사람이 받는 것
-        updated.currentAssigneeID = updated.rotationMemberIDs[curIdx]
         return updated
     }
 

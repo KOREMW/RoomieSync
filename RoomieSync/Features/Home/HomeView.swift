@@ -143,8 +143,9 @@ struct HomeView: View {
 
     @ViewBuilder
     private func choreRow(_ chore: Chore, viewModel: HomeViewModel) -> some View {
-        let isMine = chore.currentAssigneeID == viewModel.currentUserID
-        let assignee = viewModel.membersByID[chore.currentAssigneeID]
+        let assigneeID = ChoreRotation.assignee(chore)
+        let isMine = assigneeID == viewModel.currentUserID
+        let assignee = viewModel.membersByID[assigneeID]
         HStack(spacing: Spacing.m) {
             Text(chore.icon.isEmpty ? "✓" : chore.icon)
                 .font(.system(size: 24))

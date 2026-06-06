@@ -117,9 +117,10 @@ struct ChoreListView: View {
 
     @ViewBuilder
     private func choreCard(_ chore: Chore, vm: ChoreViewModel) -> some View {
-        let isMine = chore.currentAssigneeID == vm.currentUserID
+        let assigneeID = ChoreRotation.assignee(chore)
+        let isMine = assigneeID == vm.currentUserID
         let isDone = vm.isCompletedToday(chore.id)
-        let assignee = vm.members.first(where: { $0.id == chore.currentAssigneeID })
+        let assignee = vm.members.first(where: { $0.id == assigneeID })
 
         VStack(alignment: .leading, spacing: Spacing.s) {
             HStack(spacing: Spacing.s) {
@@ -206,10 +207,7 @@ struct ChoreListView: View {
     }
 
     private func nextAssigneeID(chore: Chore, vm: ChoreViewModel) -> UUID? {
-        guard chore.rotationMemberIDs.count > 1,
-              let idx = chore.rotationMemberIDs.firstIndex(of: chore.currentAssigneeID) else { return nil }
-        let next = (idx + 1) % chore.rotationMemberIDs.count
-        return chore.rotationMemberIDs[next]
+        ChoreRotation.upcomingAssignee(chore)
     }
 
 }

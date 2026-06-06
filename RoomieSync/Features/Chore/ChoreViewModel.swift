@@ -149,7 +149,7 @@ public final class ChoreViewModel {
         ns.setChorePreference(.eveningReminder, choreID: chore.id, enabled: evening)
         ns.setChoreTimeMinutes(.morningDuty, choreID: chore.id, minutes: morningMinutes)
         ns.setChoreTimeMinutes(.eveningReminder, choreID: chore.id, minutes: eveningMinutes)
-        let assigneeName = members.first(where: { $0.id == chore.currentAssigneeID })?.name ?? ""
+        let assigneeName = members.first(where: { $0.id == ChoreRotation.assignee(chore) })?.name ?? ""
         Task {
             await ns.scheduleMorningDuty(chore: chore, memberName: assigneeName,
                                          hour: morningMinutes / 60, minute: morningMinutes % 60)
@@ -179,11 +179,9 @@ public final class ChoreViewModel {
                 deviceIdentifier: device.deviceIdentifier(),
                 isConfirmed: true
             )
-            // 다음 멤버로 회전
-            let rotated = ChoreRotation.rotateToNext(chore)
-            _ = try await choreRepo.updateChore(rotated)
+            // 담당자 회전은 '날짜가 지나야' 일어난다(ChoreRotation.assignee 가 rotationStartedAt 기준
+            // 으로 계산). 완료는 그날의 완료 기록만 남기고 담당자를 바꾸지 않는다.
             // 룸메 완료 알림은 '다른 멤버'가 앱을 열 때 감지해 발송(HomeViewModel).
-            // 여기서(본인 기기) 발송하면 자기 자신에게만 떠서 의미가 없으므로 호출하지 않는다.
             HapticManager.shared.success()
             await load()
         } catch {
@@ -195,11 +193,8 @@ public final class ChoreViewModel {
     public func cancelComplete(chore: Chore) async {
         guard let completion = completedTodayByChore[chore.id] else { return }
         do {
+            // 담당자는 날짜 기준으로 계산되므로 완료 기록만 지우면 된다(회전 원복 불필요).
             try await choreRepo.cancelCompletion(completion.id)
-            // 회전 원복: 현재 담당자를 완료자(=완료 시점의 담당자)로 되돌림
-            var reverted = chore
-            reverted.currentAssigneeID = completion.memberID
-            _ = try await choreRepo.updateChore(reverted)
             await load()
         } catch {
             errorMessage = CKErrorMapper.userMessage(for: error)

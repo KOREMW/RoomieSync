@@ -263,7 +263,7 @@ public final class NotificationService: NSObject {
     ) async {
         let byID = Dictionary(uniqueKeysWithValues: members.map { ($0.id, $0) })
         for chore in chores {
-            let assignee = byID[chore.currentAssigneeID]
+            let assignee = byID[ChoreRotation.assignee(chore)]
             await scheduleMorningDuty(chore: chore, memberName: assignee?.name ?? "")
             await scheduleEveningReminder(chore: chore, memberName: assignee?.name ?? "")
         }

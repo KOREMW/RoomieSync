@@ -19,6 +19,7 @@ struct HomeView: View {
     @State private var showGroupSwitcher = false
     @State private var showBreakdown = false
     @State private var showSettlementAction = false
+    @State private var showInbox = false
 
     var body: some View {
         ScrollView {
@@ -51,6 +52,23 @@ struct HomeView: View {
             if viewModel != nil { Task { await viewModel?.load() } }
         }
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button { showInbox = true } label: {
+                    ZStack(alignment: .topTrailing) {
+                        Image(systemName: "bell").foregroundStyle(Tokens.textPrimary)
+                        if let vm = viewModel, vm.inboxUnreadCount > 0 {
+                            Circle().fill(Tokens.danger)
+                                .frame(width: 9, height: 9)
+                                .offset(x: 4, y: -3)
+                        }
+                    }
+                }
+            }
+        }
+        .sheet(isPresented: $showInbox, onDismiss: { Task { await viewModel?.load() } }) {
+            NotificationInboxView(groupID: groupID)
+        }
         .sheet(isPresented: $showGroupSwitcher) {
             GroupSwitcherSheet(currentGroupID: groupID)
         }

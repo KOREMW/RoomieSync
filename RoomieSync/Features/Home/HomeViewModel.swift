@@ -20,6 +20,7 @@ public final class HomeViewModel {
     private let expenseRepo: any ExpenseRepositoryProtocol
 
     public private(set) var greetingName: String = ""
+    public private(set) var inboxUnreadCount: Int = 0
     public private(set) var groupName: String = ""
     public private(set) var groupIcon: String = Group.defaultIcon
     public private(set) var groupColorHex: String = Group.defaultIconColorHex
@@ -56,6 +57,8 @@ public final class HomeViewModel {
 
             // 내 앞으로 온 새 송금 요청 → 로컬 알림 (서버 푸시 없이 동기화 시점에 처리)
             await checkIncomingPaymentRequests(myID: me?.id)
+            // 알림함 안 읽음 개수(송금요청+공지) → 홈 종 배지
+            await updateInboxUnread(myID: me?.id)
 
             todayChores = try await choreRepo.fetchChores(groupID: groupID)
 
@@ -135,6 +138,18 @@ public final class HomeViewModel {
         // 내 앞 모든 요청을 '확인함'으로 기록(재알림 방지).
         mine.forEach { seen.insert($0.id.uuidString) }
         UserDefaults.standard.set(Array(seen), forKey: key)
+    }
+
+    /// 알림함(송금요청+공지) 안 읽음 개수 — 마지막으로 알림함을 연 시각 이후 생성된 항목.
+    private func updateInboxUnread(myID: UUID?) async {
+        guard let myID else { inboxUnreadCount = 0; return }
+        let lastOpened = UserDefaults.standard.double(forKey: "inboxLastOpened.\(groupID.uuidString)")
+        let cut = Date(timeIntervalSince1970: lastOpened)
+        let reqs = (try? await groupRepo.fetchPaymentRequests(groupID: groupID))?
+            .filter { $0.toMemberID == myID && $0.fromMemberID != myID } ?? []
+        let notes = (try? await groupRepo.fetchNotes(groupID: groupID)) ?? []
+        inboxUnreadCount = reqs.filter { $0.createdAt > cut }.count
+            + notes.filter { $0.createdAt > cut }.count
     }
 
     private func drainWidgetActions() async {

@@ -58,6 +58,7 @@ struct MyPageView: View {
     @State private var expenseAddedOn: Bool = NotificationService.shared.userPrefers(.expenseAdded)
     @State private var announcementOn: Bool = NotificationService.shared.userPrefers(.announcement)
     @State private var paymentRequestOn: Bool = NotificationService.shared.userPrefers(.paymentRequest)
+    @State private var choreAddedOn: Bool = NotificationService.shared.userPrefers(.choreAdded)
     @State private var permissionGranted: Bool = false
 
     var body: some View {
@@ -219,6 +220,10 @@ struct MyPageView: View {
                 Toggle("룸메이트가 완료했을 때", isOn: $memberCompletionOn)
                     .onChange(of: memberCompletionOn) { _, v in
                         NotificationService.shared.setPreference(.memberCompletion, enabled: v)
+                    }
+                Toggle("새 가사가 등록됐을 때", isOn: $choreAddedOn)
+                    .onChange(of: choreAddedOn) { _, v in
+                        NotificationService.shared.setPreference(.choreAdded, enabled: v)
                     }
                 Toggle("새 지출이 등록됐을 때 (무음)", isOn: $expenseAddedOn)
                     .onChange(of: expenseAddedOn) { _, v in

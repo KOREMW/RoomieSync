@@ -111,6 +111,8 @@ public final class ChoreViewModel {
             )
             applyChoreNotifications(chore: chore, morning: notifyMorning, evening: notifyEvening,
                                     morningMinutes: morningMinutes, eveningMinutes: eveningMinutes)
+            // 내가 만든 가사로 표시 → 새 가사 알림/알림함에서 생성자 본인은 제외.
+            ActivityLog.markCreatedChore(chore.id, groupID: groupID)
             await load()
             return true
         } catch {

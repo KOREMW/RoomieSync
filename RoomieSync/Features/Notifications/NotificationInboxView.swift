@@ -142,6 +142,40 @@ struct NotificationInboxView: View {
                 date: n.createdAt, route: .notes))
         }
 
+        // 최근 14일 활동 (다른 멤버의 지출·완료·새 가사)
+        let recent = Date().addingTimeInterval(-14 * 24 * 3600)
+
+        // 새 지출 (내가 결제자가 아닌 것)
+        let expenses = (try? await repositories.expense.fetchExpenses(groupID: groupID, includeSettled: true)) ?? []
+        for e in expenses where e.paidByMemberID != myID && e.date >= recent {
+            result.append(InboxItem(
+                id: e.id, icon: "creditcard.fill", tint: Tokens.primary,
+                title: "새 지출 · \(nameByID[e.paidByMemberID] ?? "?") 결제",
+                subtitle: "\(e.title) · \(CurrencyFormatter.format(e.amount))",
+                date: e.date, route: .expenses))
+        }
+
+        // 가사 완료 (다른 멤버)
+        let chores = (try? await repositories.chore.fetchChores(groupID: groupID)) ?? []
+        let choreTitleByID = Dictionary(uniqueKeysWithValues: chores.map { ($0.id, $0) })
+        let completions = (try? await repositories.chore.fetchAllCompletions(groupID: groupID, since: recent)) ?? []
+        for c in completions where c.memberID != myID {
+            let chore = choreTitleByID[c.choreID]
+            result.append(InboxItem(
+                id: c.id, icon: "checkmark.circle.fill", tint: Tokens.success,
+                title: "가사 완료 · \(nameByID[c.memberID] ?? "?")",
+                subtitle: "\(chore?.icon ?? "")\(chore?.title ?? "가사") 완료",
+                date: c.completedAt, route: .chores))
+        }
+
+        // 새 가사 (내가 만들지 않은 것)
+        for ch in chores where ch.rotationStartedAt >= recent && !ActivityLog.isMyCreatedChore(ch.id, groupID: groupID) {
+            result.append(InboxItem(
+                id: ch.id, icon: "plus.square.fill", tint: Tokens.primary,
+                title: "새 가사 등록", subtitle: "\(ch.icon)\(ch.title)",
+                date: ch.rotationStartedAt, route: .chores))
+        }
+
         // 내 알림함에서 삭제(숨김)한 항목 제외
         let hidden = InboxDismissStore.dismissed(groupID)
         items = result.filter { !hidden.contains($0.id.uuidString) }.sorted { $0.date > $1.date }

@@ -29,6 +29,8 @@ struct MonthlyExpensesView: View {
     }
     private var monthTotal: Decimal { monthExpenses.reduce(Decimal(0)) { $0 + $1.amount } }
 
+    private var navTitle: String { "\(year)년 \(month)월 지출 내역" }
+
     private var years: [Int] {
         let cur = Calendar.current.component(.year, from: .now)
         var set = Set((cur - 5)...(cur + 1))
@@ -45,7 +47,7 @@ struct MonthlyExpensesView: View {
             Divider()
             content
         }
-        .navigationTitle("\(year)년 \(month)월 지출 내역")
+        .navigationTitle(navTitle)
         .navigationBarTitleDisplayMode(.inline)
         .task { await load() }
         .sheet(isPresented: $showPicker) {
@@ -62,7 +64,7 @@ struct MonthlyExpensesView: View {
             }
             Button { showPicker = true } label: {
                 HStack(spacing: 4) {
-                    Text("\(year)년 \(month)월").font(Typo.sectionTitle()).foregroundStyle(Tokens.textPrimary)
+                    Text(verbatim: "\(year)년 \(month)월").font(Typo.sectionTitle()).foregroundStyle(Tokens.textPrimary)
                     Image(systemName: "chevron.down").font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(Tokens.textSecondary)
                 }
@@ -102,11 +104,11 @@ struct MonthlyExpensesView: View {
         NavigationStack {
             HStack(spacing: 0) {
                 Picker("년", selection: $year) {
-                    ForEach(years, id: \.self) { Text("\($0)년").tag($0) }
+                    ForEach(years, id: \.self) { Text(verbatim: "\($0)년").tag($0) }
                 }
                 .pickerStyle(.wheel)
                 Picker("월", selection: $month) {
-                    ForEach(1...12, id: \.self) { Text("\($0)월").tag($0) }
+                    ForEach(1...12, id: \.self) { Text(verbatim: "\($0)월").tag($0) }
                 }
                 .pickerStyle(.wheel)
             }

@@ -161,6 +161,23 @@ public final class NotificationService: NSObject {
         try? await center.add(request)
     }
 
+    // MARK: - 시나리오 8: 새 가사 등록 알림
+
+    public func notifyChoreAdded(title: String, icon: String) async {
+        guard userPrefers(.choreAdded) else { return }
+        let content = UNMutableNotificationContent()
+        content.title = "새 가사가 등록됐어요 \(icon)"
+        content.body = title
+        content.sound = .default
+        content.interruptionLevel = .passive
+        content.userInfo = ["route": "chores"]
+
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 0.5, repeats: false)
+        let request = UNNotificationRequest(identifier: "choreadded.\(UUID().uuidString)",
+                                            content: content, trigger: trigger)
+        try? await center.add(request)
+    }
+
     // MARK: - 시나리오 6: 새 공지 알림
 
     public func notifyAnnouncement(text: String, authorName: String) async {
@@ -271,6 +288,7 @@ public final class NotificationService: NSObject {
         case monthlySettlement = "notif.monthlySettlement"
         case announcement      = "notif.announcement"
         case paymentRequest    = "notif.paymentRequest"
+        case choreAdded        = "notif.choreAdded"
 
         public var displayName: String {
             switch self {
@@ -281,6 +299,7 @@ public final class NotificationService: NSObject {
             case .monthlySettlement: return "월말 정산 알림"
             case .announcement:      return "새 공지 알림"
             case .paymentRequest:    return "송금 요청 알림"
+            case .choreAdded:        return "새 가사 등록 알림"
             }
         }
 

@@ -93,10 +93,12 @@ public final class ChoreViewModel {
     public func addChore(
         title: String, icon: String, cycle: ChoreCycle, weekdays: [Int], anchorDate: Date? = nil,
         difficulty: ChoreDifficulty = .normal,
+        rotationMemberIDs: [UUID]? = nil,
         notifyMorning: Bool = true, notifyEvening: Bool = true,
         morningMinutes: Int = 540, eveningMinutes: Int = 1260
     ) async -> Bool {
         do {
+            let rotation = (rotationMemberIDs?.isEmpty == false) ? rotationMemberIDs! : members.map(\.id)
             let chore = try await choreRepo.createChore(
                 groupID: groupID,
                 title: title,
@@ -104,7 +106,7 @@ public final class ChoreViewModel {
                 cycle: cycle,
                 weekdays: weekdays,
                 anchorDate: anchorDate,
-                rotationMemberIDs: members.map(\.id),
+                rotationMemberIDs: rotation,
                 difficulty: difficulty
             )
             applyChoreNotifications(chore: chore, morning: notifyMorning, evening: notifyEvening,

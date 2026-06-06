@@ -20,6 +20,7 @@ struct ChoreAddSheet: View {
     @State private var weekdays: Set<Int> = []          // 1=일 … 7=토
     @State private var pickedDate: Date = .now          // 매 월 / 선택용 캘린더 날짜
     @State private var difficulty: ChoreDifficulty = .normal
+    @State private var rotationOrder: [UUID] = []        // 담당자 + 순서
     @State private var notifyMorning: Bool = true
     @State private var notifyEvening: Bool = true
     @State private var morningTime: Date = Self.time(9, 0)
@@ -87,11 +88,7 @@ struct ChoreAddSheet: View {
                         DatePicker("저녁 알림 시각", selection: $eveningTime, displayedComponents: .hourAndMinute)
                     }
                 }
-                Section {
-                    Text("멤버 \(viewModel.members.count)명이 순서대로 자동 배정됩니다.")
-                        .font(Typo.caption())
-                        .foregroundStyle(Tokens.textSecondary)
-                }
+                assigneeSection
 
                 if isEditing {
                     Section {
@@ -108,7 +105,8 @@ struct ChoreAddSheet: View {
                 ToolbarItem(placement: .cancellationAction) { Button("취소") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(isEditing ? "수정" : "추가") { Task { await save() } }
-                        .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty || isWorking)
+                        .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty
+                                  || rotationOrder.isEmpty || isWorking)
                 }
             }
             .confirmationDialog("이 가사를 삭제할까요?", isPresented: $showDeleteConfirm, titleVisibility: .visible) {
@@ -118,6 +116,70 @@ struct ChoreAddSheet: View {
             .task { prefillIfNeeded() }
         }
     }
+
+    // MARK: - 담당자 · 순서
+
+    private var assigneeSection: some View {
+        Section("담당자 · 순서") {
+            if rotationOrder.isEmpty {
+                Text("담당자를 한 명 이상 선택하세요.")
+                    .font(Typo.caption()).foregroundStyle(Tokens.danger)
+            } else {
+                ForEach(Array(rotationOrder.enumerated()), id: \.element) { idx, mid in
+                    if let m = member(mid) {
+                        HStack(spacing: Spacing.s) {
+                            Text("\(idx + 1)")
+                                .font(.system(size: 12, weight: .bold))
+                                .frame(width: 22, height: 22)
+                                .background(Tokens.primary).foregroundStyle(.white).clipShape(Circle())
+                            MemberAvatarView(member: m, size: 30)
+                            Text(m.name)
+                            Spacer()
+                            Button { moveUp(idx) } label: { Image(systemName: "chevron.up") }
+                                .buttonStyle(.borderless).disabled(idx == 0)
+                            Button { moveDown(idx) } label: { Image(systemName: "chevron.down") }
+                                .buttonStyle(.borderless).disabled(idx == rotationOrder.count - 1)
+                            Button { remove(mid) } label: {
+                                Image(systemName: "minus.circle.fill").foregroundStyle(Tokens.danger)
+                            }
+                            .buttonStyle(.borderless)
+                        }
+                    }
+                }
+            }
+
+            // 추가 가능한 멤버 (탭하면 순서 끝에 추가)
+            if !available.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: Spacing.s) {
+                        ForEach(available) { m in
+                            Button { rotationOrder.append(m.id) } label: {
+                                Label(m.name, systemImage: "plus")
+                                    .font(Typo.caption())
+                                    .padding(.horizontal, Spacing.m).padding(.vertical, 6)
+                                    .background(Tokens.surfaceMuted)
+                                    .foregroundStyle(Tokens.textPrimary)
+                                    .clipShape(Capsule())
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.vertical, 2)
+                }
+            }
+
+            Text(rotationOrder.count <= 1
+                 ? "혼자 담당해요."
+                 : "\(rotationOrder.count)명이 순서대로 돌아가며 담당해요.")
+                .font(Typo.caption()).foregroundStyle(Tokens.textSecondary)
+        }
+    }
+
+    private func member(_ id: UUID) -> Member? { viewModel.members.first { $0.id == id } }
+    private var available: [Member] { viewModel.members.filter { !rotationOrder.contains($0.id) } }
+    private func moveUp(_ i: Int) { guard i > 0 else { return }; rotationOrder.swapAt(i, i - 1) }
+    private func moveDown(_ i: Int) { guard i < rotationOrder.count - 1 else { return }; rotationOrder.swapAt(i, i + 1) }
+    private func remove(_ id: UUID) { rotationOrder.removeAll { $0 == id } }
 
     // MARK: - 요일 선택 (컨테이너 꽉 차게 균등 배치)
 
@@ -160,12 +222,18 @@ struct ChoreAddSheet: View {
     private func prefillIfNeeded() {
         guard !didPrefill else { return }
         didPrefill = true
+        // 기본 담당자 = 전체 멤버(가입 순서)
+        if rotationOrder.isEmpty { rotationOrder = viewModel.members.map(\.id) }
         guard let c = editing else { return }
         title = c.title
         selectedIcon = c.icon
         cycle = c.cycleType
         weekdays = Set(c.weekdays)
         difficulty = c.difficulty
+        // 편집: 저장된 순서 사용(현재 그룹에 있는 멤버만)
+        let memberIDs = Set(viewModel.members.map(\.id))
+        let stored = c.rotationMemberIDs.filter { memberIDs.contains($0) }
+        if !stored.isEmpty { rotationOrder = stored }
         if let a = c.anchorDate { pickedDate = a }
         let ns = NotificationService.shared
         notifyMorning = ns.userPrefersChore(.morningDuty, choreID: c.id)
@@ -190,6 +258,11 @@ struct ChoreAddSheet: View {
             updated.weekdays = days
             updated.anchorDate = anchor
             updated.difficulty = difficulty
+            updated.rotationMemberIDs = rotationOrder
+            // 현재 담당자가 새 순서에서 빠졌으면 첫 담당자로 보정
+            if !rotationOrder.contains(updated.currentAssigneeID), let first = rotationOrder.first {
+                updated.currentAssigneeID = first
+            }
             ok = await viewModel.updateChore(updated, notifyMorning: notifyMorning, notifyEvening: notifyEvening,
                                              morningMinutes: mMin, eveningMinutes: eMin)
         } else {
@@ -197,6 +270,7 @@ struct ChoreAddSheet: View {
                 title: InputValidator.choreTitle(title),
                 icon: selectedIcon, cycle: cycle, weekdays: days, anchorDate: anchor,
                 difficulty: difficulty,
+                rotationMemberIDs: rotationOrder,
                 notifyMorning: notifyMorning, notifyEvening: notifyEvening,
                 morningMinutes: mMin, eveningMinutes: eMin
             )

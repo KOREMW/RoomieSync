@@ -69,16 +69,21 @@ struct ExpenseAddView: View {
                 }
 
                 Section("결제한 사람") {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: Spacing.l) {
-                            ForEach(viewModel.members) { m in
-                                VStack(spacing: 6) {
-                                    MemberAvatarView(member: m, size: 48, highlighted: paidByID == m.id)
-                                    Text(m.name)
-                                        .font(Typo.caption())
-                                        .foregroundStyle(paidByID == m.id ? Tokens.primary : Tokens.textSecondary)
+                    if participantIDs.isEmpty {
+                        Text("먼저 함께 사용한 사람을 선택하세요.")
+                            .font(Typo.caption()).foregroundStyle(Tokens.textSecondary)
+                    } else {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: Spacing.l) {
+                                ForEach(viewModel.members.filter { participantIDs.contains($0.id) }) { m in
+                                    VStack(spacing: 6) {
+                                        MemberAvatarView(member: m, size: 48, highlighted: paidByID == m.id)
+                                        Text(m.name)
+                                            .font(Typo.caption())
+                                            .foregroundStyle(paidByID == m.id ? Tokens.primary : Tokens.textSecondary)
+                                    }
+                                    .onTapGesture { paidByID = m.id }
                                 }
-                                .onTapGesture { paidByID = m.id }
                             }
                         }
                     }
@@ -207,6 +212,12 @@ struct ExpenseAddView: View {
                     // 기본 결제자 = 이 기기의 '나'(없으면 첫 멤버)
                     paidByID = CurrentMemberStore.resolve(viewModel.members, groupID: viewModel.groupID)?.id
                     participantIDs = Set(viewModel.members.map(\.id))
+                }
+            }
+            // 참여자가 바뀌면 결제자도 연동: 결제자가 참여자에서 빠지면 첫 참여자로 보정
+            .onChange(of: participantIDs) { _, new in
+                if let p = paidByID, !new.contains(p) {
+                    paidByID = viewModel.members.first { new.contains($0.id) }?.id
                 }
             }
         }

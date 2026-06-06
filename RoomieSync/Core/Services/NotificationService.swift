@@ -131,7 +131,7 @@ public final class NotificationService: NSObject {
         let content = UNMutableNotificationContent()
         content.title = "\(memberName)이 \(choreIcon)\(choreTitle)을(를) 완료했어요 ✓"
         content.sound = .default
-        content.interruptionLevel = .passive
+        content.interruptionLevel = .active   // 배너로 표시 (잠금화면/상단 알림)
         content.userInfo = ["route": "chores"]
 
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 0.5, repeats: false)
@@ -143,7 +143,7 @@ public final class NotificationService: NSObject {
         try? await center.add(request)
     }
 
-    // MARK: - 시나리오 4: 지출 입력 알림 (무음)
+    // MARK: - 시나리오 4: 지출 입력 알림
 
     public func notifyExpenseAdded(
         expense: Expense,
@@ -152,8 +152,8 @@ public final class NotificationService: NSObject {
         guard userPrefers(.expenseAdded) else { return }
         let content = UNMutableNotificationContent()
         content.title = "\(payerName)이 \(expense.title) \(CurrencyFormatter.format(expense.amount))을 등록했어요"
-        content.sound = nil   // 무음
-        content.interruptionLevel = .passive
+        content.sound = .default
+        content.interruptionLevel = .active   // 배너로 표시
         content.userInfo = ["route": "expenses"]
 
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 0.5, repeats: false)
@@ -173,7 +173,7 @@ public final class NotificationService: NSObject {
         content.title = "새 가사가 등록됐어요 \(icon)"
         content.body = title
         content.sound = .default
-        content.interruptionLevel = .passive
+        content.interruptionLevel = .active   // 배너로 표시
         content.userInfo = ["route": "chores"]
 
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 0.5, repeats: false)

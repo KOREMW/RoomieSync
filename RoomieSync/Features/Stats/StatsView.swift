@@ -15,6 +15,7 @@ struct StatsView: View {
     @Environment(\.repositories) private var repositories
     @State private var viewModel: StatsViewModel?
     @State private var selectedBadge: Badge?
+    @State private var selectedMonth: Date?
 
     var body: some View {
         ScrollView {
@@ -242,9 +243,19 @@ struct StatsView: View {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("월별 지출 추이").font(Typo.sectionTitle())
-                    Text("최근 6개월").font(Typo.caption()).foregroundStyle(Tokens.textSecondary)
+                    Text("최근 6개월 · 그래프를 눌러 금액 확인").font(Typo.caption())
+                        .foregroundStyle(Tokens.textSecondary)
                 }
                 Spacer()
+                NavigationLink {
+                    MonthlyExpensesView(groupID: groupID)
+                } label: {
+                    HStack(spacing: 2) {
+                        Text("내역").font(Typo.caption())
+                        Image(systemName: "chevron.right").font(.system(size: 11, weight: .semibold))
+                    }
+                    .foregroundStyle(Tokens.primary)
+                }
             }
             if vm.monthlySeries.isEmpty {
                 Text("아직 데이터가 충분하지 않아요")
@@ -252,19 +263,47 @@ struct StatsView: View {
                     .foregroundStyle(Tokens.textTertiary)
                     .frame(maxWidth: .infinity, minHeight: 160)
             } else {
-                Chart(vm.monthlySeries) { point in
-                    LineMark(
-                        x: .value("월", point.month, unit: .month),
-                        y: .value("금액", (point.total as NSDecimalNumber).doubleValue)
-                    )
-                    .interpolationMethod(.catmullRom)
-                    .foregroundStyle(Tokens.primary)
-                    PointMark(
-                        x: .value("월", point.month, unit: .month),
-                        y: .value("금액", (point.total as NSDecimalNumber).doubleValue)
-                    )
-                    .foregroundStyle(Tokens.primary)
+                // 선택한 달의 금액 표시
+                if let p = selectedPoint(vm) {
+                    HStack {
+                        Text(monthLabel(p.month)).font(Typo.caption()).foregroundStyle(Tokens.textSecondary)
+                        Spacer()
+                        Text(CurrencyFormatter.format(p.total)).font(Typo.bodyBold()).foregroundStyle(Tokens.primary)
+                    }
                 }
+                Chart {
+                    ForEach(vm.monthlySeries) { point in
+                        LineMark(
+                            x: .value("월", point.month, unit: .month),
+                            y: .value("금액", (point.total as NSDecimalNumber).doubleValue)
+                        )
+                        .interpolationMethod(.catmullRom)
+                        .foregroundStyle(Tokens.primary)
+                        PointMark(
+                            x: .value("월", point.month, unit: .month),
+                            y: .value("금액", (point.total as NSDecimalNumber).doubleValue)
+                        )
+                        .foregroundStyle(Tokens.primary)
+                    }
+                    if let p = selectedPoint(vm) {
+                        RuleMark(x: .value("월", p.month, unit: .month))
+                            .foregroundStyle(Tokens.textTertiary.opacity(0.4))
+                        PointMark(
+                            x: .value("월", p.month, unit: .month),
+                            y: .value("금액", (p.total as NSDecimalNumber).doubleValue)
+                        )
+                        .symbolSize(180)
+                        .foregroundStyle(Tokens.primary)
+                        .annotation(position: .top, overflowResolution: .init(x: .fit(to: .chart), y: .disabled)) {
+                            Text(CurrencyFormatter.format(p.total))
+                                .font(.system(size: 11, weight: .bold))
+                                .padding(.horizontal, 6).padding(.vertical, 3)
+                                .background(Tokens.primary).foregroundStyle(.white)
+                                .clipShape(Capsule())
+                        }
+                    }
+                }
+                .chartXSelection(value: $selectedMonth)
                 .chartXAxis {
                     AxisMarks(values: .stride(by: .month)) { value in
                         AxisGridLine()
@@ -274,6 +313,19 @@ struct StatsView: View {
                 .frame(height: 200)
             }
         }
+    }
+
+    private func selectedPoint(_ vm: StatsViewModel) -> MonthlyExpensePoint? {
+        guard let sel = selectedMonth else { return nil }
+        let cal = Calendar.current
+        return vm.monthlySeries.first { cal.isDate($0.month, equalTo: sel, toGranularity: .month) }
+    }
+
+    private func monthLabel(_ date: Date) -> String {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "ko_KR")
+        f.dateFormat = "yyyy년 M월"
+        return f.string(from: date)
     }
 
     // MARK: - 카테고리 도넛

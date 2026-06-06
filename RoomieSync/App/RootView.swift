@@ -39,6 +39,7 @@ struct RootView: View {
             }
         }
         .tint(Tokens.primary)
+        .dismissKeyboardOnTapOutside()
     }
 }
 

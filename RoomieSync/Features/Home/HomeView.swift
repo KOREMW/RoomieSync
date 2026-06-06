@@ -18,6 +18,7 @@ struct HomeView: View {
     @State private var viewModel: HomeViewModel?
     @State private var showGroupSwitcher = false
     @State private var showBreakdown = false
+    @State private var showSettlementAction = false
 
     var body: some View {
         ScrollView {
@@ -55,6 +56,9 @@ struct HomeView: View {
         }
         .sheet(isPresented: $showBreakdown) {
             SettlementBreakdownView(groupID: groupID)
+        }
+        .sheet(isPresented: $showSettlementAction) {
+            SettlementActionView(groupID: groupID)
         }
     }
 
@@ -165,7 +169,7 @@ struct HomeView: View {
                 BalanceCard(kind: .receive, amount: vm.receiveAmount)
                 BalanceCard(kind: .pay, amount: vm.payAmount)
             }
-            RoomieButton("정산하기") {}.padding(.top, Spacing.s)
+            RoomieButton("정산하기") { showSettlementAction = true }.padding(.top, Spacing.s)
         }
         // '정산하기' 버튼을 제외한 컨테이너 전체를 탭하면 정산 내역으로 이동
         .contentShape(Rectangle())

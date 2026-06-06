@@ -10,17 +10,49 @@
 
 import SwiftUI
 
-/// 송금 링크 생성 (best-effort). 토스 송금 스킴 + 계좌 복사 폴백.
+/// 송금 앱 선택지 (best-effort 딥링크). 토스는 계좌/금액 자동 입력, 나머지는 앱 실행.
+/// 딥링크 스킴은 앱/버전에 따라 달라질 수 있어, 실행 전 계좌+금액을 클립보드에 복사해
+/// 어느 앱에서든 붙여넣어 송금할 수 있게 한다.
+enum PaymentApp: String, CaseIterable, Identifiable {
+    case toss, tossbank, kakaopay, kakaobank, naverpay
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .toss:      return "토스로 송금 (자동 입력)"
+        case .tossbank:  return "토스뱅크 열기"
+        case .kakaopay:  return "카카오페이 열기"
+        case .kakaobank: return "카카오뱅크 열기"
+        case .naverpay:  return "네이버페이 열기"
+        }
+    }
+
+    /// 토스는 계좌/금액을 미리 채워 송금창으로 이동.
+    var prefillsTransfer: Bool { self == .toss }
+
+    /// 앱 실행/송금 URL. (토스만 prefill, 나머지는 앱 실행)
+    func url(bank: String, account: String, amount: Decimal) -> URL? {
+        switch self {
+        case .toss:
+            var comps = URLComponents(string: "supertoss://send")
+            comps?.queryItems = [
+                URLQueryItem(name: "bank", value: bank),
+                URLQueryItem(name: "accountNo", value: account),
+                URLQueryItem(name: "amount", value: NSDecimalNumber(decimal: amount).stringValue)
+            ]
+            return comps?.url
+        case .tossbank:  return URL(string: "supertoss://")
+        case .kakaopay:  return URL(string: "kakaotalk://kakaopay/home")
+        case .kakaobank: return URL(string: "kakaobank://")
+        case .naverpay:  return URL(string: "naverpay://")
+        }
+    }
+}
+
 enum PaymentLink {
-    /// 토스 송금: supertoss://send?bank=은행&accountNo=계좌&amount=금액
     static func toss(bank: String, account: String, amount: Decimal) -> URL? {
-        var comps = URLComponents(string: "supertoss://send")
-        comps?.queryItems = [
-            URLQueryItem(name: "bank", value: bank),
-            URLQueryItem(name: "accountNo", value: account),
-            URLQueryItem(name: "amount", value: NSDecimalNumber(decimal: amount).stringValue)
-        ]
-        return comps?.url
+        PaymentApp.toss.url(bank: bank, account: account, amount: amount)
     }
     static func accountString(bank: String, account: String) -> String {
         "\(bank) \(account)"
@@ -40,6 +72,7 @@ struct SettlementActionView: View {
     @State private var isLoading = true
     @State private var copied = false
     @State private var errorMessage: String? = nil
+    @State private var payTarget: Settlement? = nil   // 송금 앱 선택 대상
 
     private var me: Member? { meID.flatMap { membersByID[$0] } }
     private var toMe: [Settlement] { settlements.filter { $0.toMemberID == meID } }      // 받을 돈
@@ -132,13 +165,9 @@ struct SettlementActionView: View {
                             .font(Typo.caption()).foregroundStyle(Tokens.textSecondary)
                         HStack(spacing: Spacing.s) {
                             Button {
-                                if let url = PaymentLink.toss(bank: payee.bankName ?? "",
-                                                              account: payee.accountNumber ?? "",
-                                                              amount: s.amount) {
-                                    openURL(url)
-                                }
+                                payTarget = s
                             } label: {
-                                Label("토스로 송금", systemImage: "arrow.up.right.circle.fill")
+                                Label("송금하기", systemImage: "arrow.up.right.circle.fill")
                                     .font(Typo.caption()).fontWeight(.semibold)
                                     .padding(.horizontal, Spacing.m).padding(.vertical, 6)
                                     .background(Tokens.primary).foregroundStyle(.white)
@@ -167,6 +196,34 @@ struct SettlementActionView: View {
         } header: {
             Label("낼 돈", systemImage: "arrow.up.circle.fill").foregroundStyle(Tokens.payCardText)
         }
+        .confirmationDialog("어떤 앱으로 송금할까요?",
+                            isPresented: payDialogShown, presenting: payTarget) { s in
+            ForEach(PaymentApp.allCases) { app in
+                Button(app.label) { sendVia(app, settlement: s) }
+            }
+            Button("취소", role: .cancel) { payTarget = nil }
+        } message: { s in
+            let payee = membersByID[s.toMemberID]
+            Text("\(payee?.name ?? "상대")님에게 \(CurrencyFormatter.format(s.amount))\n선택한 앱이 열리고, 계좌·금액이 클립보드에 복사돼요(붙여넣기).")
+        }
+    }
+
+    private var payDialogShown: Binding<Bool> {
+        Binding(get: { payTarget != nil }, set: { if !$0 { payTarget = nil } })
+    }
+
+    private func sendVia(_ app: PaymentApp, settlement s: Settlement) {
+        guard let payee = membersByID[s.toMemberID] else { return }
+        let bank = payee.bankName ?? ""
+        let account = payee.accountNumber ?? ""
+        // 어떤 앱에서든 붙여넣어 송금할 수 있게 계좌+금액을 복사(토스는 자동 입력).
+        let amountStr = NSDecimalNumber(decimal: s.amount).stringValue
+        copySensitive("\(bank) \(account) \(amountStr)원")
+        copied = true
+        if let url = app.url(bank: bank, account: account, amount: s.amount) {
+            openURL(url) { _ in }   // 앱 미설치면 복사만 된 상태로 폴백
+        }
+        payTarget = nil
     }
 
     /// 민감정보(계좌)는 60초 후 자동 삭제 + 기기 로컬 전용으로 복사.

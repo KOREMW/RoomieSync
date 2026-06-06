@@ -73,7 +73,8 @@ public final class ChoreViewModel {
         errorMessage = nil
         do {
             members = try await groupRepo.fetchMembers(ofGroup: groupID)
-            currentUserID = members.first?.id
+            // 기기별 '나' 식별 — members.first(호스트) 가 아니라 저장된 멤버/ownerUID 로 해석.
+            currentUserID = CurrentMemberStore.resolve(members, groupID: groupID)?.id
             allChores = try await choreRepo.fetchChores(groupID: groupID)
 
             // 오늘 내가 완료한 가사 맵 구성 (취소 버튼 노출용)

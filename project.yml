@@ -105,6 +105,58 @@ targets:
       - package: Firebase
         product: FirebaseAuth
 
+  # ===== 라이트 앱 (무료 사이드로드 / 친구 폰 직접 설치용) =====
+  # 메인 RoomieSync 와 같은 소스를 쓰되:
+  #  - 위젯 미포함, iCloud/푸시/App Group entitlement 없음 → 무료(개인) 팀으로 서명 가능
+  #  - LITE_BUILD 플래그로 CloudKit 미러링 강제 비활성(흰 화면 방지)
+  #  - Firestore + 로컬 알림은 그대로 동작
+  # 사용: Xcode 상단 스킴에서 'RoomieSyncLite' 선택 → 친구 폰에 Run.
+  RoomieSyncLite:
+    type: application
+    platform: iOS
+    deploymentTarget: '17.0'
+    sources:
+      - path: RoomieSync
+        excludes:
+          - Widget/**
+          - LiveActivity/**
+          - Info.plist          # 메인 타깃 plist — 라이트 번들에 중복 복사 방지
+          - InfoLite.plist
+          - RoomieSync.entitlements
+    info:
+      path: RoomieSync/InfoLite.plist
+      properties:
+        CFBundleIdentifier: $(PRODUCT_BUNDLE_IDENTIFIER)
+        CFBundleDisplayName: RoomieSync
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        UILaunchScreen:
+          UIColorName: ''
+        UIRequiresFullScreen: false
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        NSUserTrackingUsageDescription: 사용자 활동을 추적하지 않습니다.
+        UIBackgroundModes:
+          - fetch
+        CFBundleURLTypes:
+          - CFBundleURLSchemes:
+              - roomiesync
+            CFBundleURLName: com.roomiesync.app.lite
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.roomiesync.app.lite
+        PRODUCT_NAME: RoomieSync
+        ENABLE_PREVIEWS: YES
+        TARGETED_DEVICE_FAMILY: '1'
+        SUPPORTS_MACCATALYST: NO
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: $(inherited) LITE_BUILD
+        # entitlements 없음(CODE_SIGN_ENTITLEMENTS 미설정) → 무료 팀 서명 호환
+    dependencies:
+      - package: Firebase
+        product: FirebaseFirestore
+      - package: Firebase
+        product: FirebaseAuth
+
   # ===== Widget Extension (위젯 + Live Activity 통합) =====
   RoomieSyncWidgets:
     type: app-extension
@@ -168,5 +220,15 @@ schemes:
       gatherCoverageData: true
       targets:
         - RoomieSyncTests
+    archive:
+      config: Release
+
+  # 친구 폰(무료 설치)용 스킴 — 위젯 없이 라이트 앱만 빌드
+  RoomieSyncLite:
+    build:
+      targets:
+        RoomieSyncLite: all
+    run:
+      config: Debug
     archive:
       config: Release

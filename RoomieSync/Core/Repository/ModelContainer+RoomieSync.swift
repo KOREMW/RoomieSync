@@ -40,16 +40,23 @@ public enum ModelContainerFactory {
                 cloudKitDatabase: .none
             )
         } else {
-            // iCloud 계정이 없는 환경(예: iCloud 미로그인 시뮬레이터)에서는 CloudKit
-            // 미러링 setup 이 백그라운드 큐에서 크래시한다. 계정이 있을 때만 CloudKit 을
-            // 켜고, 없으면 로컬 전용 저장으로 폴백한다(동기화만 비활성, 기능은 정상).
+            // CloudKit 미러링은 ① Firestore 백엔드를 쓰지 않고 ② iCloud 계정이 있고
+            // ③ iCloud entitlement 가 있는 빌드일 때만 켠다.
+            //  - Firestore(Firebase) 사용 시 CloudKit 은 중복이고, entitlement 없는 빌드에서
+            //    켜면 백그라운드 큐에서 크래시(흰 화면)한다 → 끈다.
+            //  - LITE_BUILD(무료 사이드로드/친구 폰 배포)는 entitlement 가 없으므로 항상 끈다.
             let iCloudAvailable = FileManager.default.ubiquityIdentityToken != nil
+            var useCloudKit = iCloudAvailable
+            if FirebaseBootstrap.isConfigured { useCloudKit = false }
+            #if LITE_BUILD
+            useCloudKit = false
+            #endif
             config = ModelConfiguration(
                 "RoomieSync",
                 schema: schema,
                 isStoredInMemoryOnly: false,
                 allowsSave: true,
-                cloudKitDatabase: iCloudAvailable ? .private(cloudKitContainerID) : .none
+                cloudKitDatabase: useCloudKit ? .private(cloudKitContainerID) : .none
             )
         }
         return try ModelContainer(for: schema, configurations: [config])

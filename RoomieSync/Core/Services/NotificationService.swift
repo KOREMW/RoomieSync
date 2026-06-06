@@ -304,10 +304,8 @@ public final class NotificationService: NSObject {
         }
 
         public var defaultValue: Bool {
-            switch self {
-            case .memberCompletion: return false   // 피로도 방지 (계획서 4.2)
-            default: return true
-            }
+            // 모든 알림 기본 ON (완료 알림도 기본 켜 양쪽 기기에서 바로 동작).
+            true
         }
     }
 

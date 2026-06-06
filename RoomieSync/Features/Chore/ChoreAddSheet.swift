@@ -67,6 +67,7 @@ struct ChoreAddSheet: View {
                     case .daily:     EmptyView()
                     }
                 }
+                assigneeSection
                 Section("난이도") {
                     Picker("난이도", selection: $difficulty) {
                         ForEach(ChoreDifficulty.allCases, id: \.self) { d in
@@ -88,8 +89,6 @@ struct ChoreAddSheet: View {
                         DatePicker("저녁 알림 시각", selection: $eveningTime, displayedComponents: .hourAndMinute)
                     }
                 }
-                assigneeSection
-
                 if isEditing {
                     Section {
                         Button(role: .destructive) { showDeleteConfirm = true } label: {

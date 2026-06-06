@@ -56,7 +56,6 @@ struct MyPageView: View {
     // 알림 (당번 알림은 가사별로 이동 → 여기선 그룹 알림만)
     @State private var memberCompletionOn: Bool = NotificationService.shared.userPrefers(.memberCompletion)
     @State private var expenseAddedOn: Bool = NotificationService.shared.userPrefers(.expenseAdded)
-    @State private var monthlyOn: Bool = NotificationService.shared.userPrefers(.monthlySettlement)
     @State private var announcementOn: Bool = NotificationService.shared.userPrefers(.announcement)
     @State private var paymentRequestOn: Bool = NotificationService.shared.userPrefers(.paymentRequest)
     @State private var permissionGranted: Bool = false
@@ -224,10 +223,6 @@ struct MyPageView: View {
                 Toggle("새 지출이 등록됐을 때 (무음)", isOn: $expenseAddedOn)
                     .onChange(of: expenseAddedOn) { _, v in
                         NotificationService.shared.setPreference(.expenseAdded, enabled: v)
-                    }
-                Toggle("월말 정산 리마인드", isOn: $monthlyOn)
-                    .onChange(of: monthlyOn) { _, v in
-                        NotificationService.shared.setPreference(.monthlySettlement, enabled: v)
                     }
                 Toggle("새 공지가 올라왔을 때", isOn: $announcementOn)
                     .onChange(of: announcementOn) { _, v in

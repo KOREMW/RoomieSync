@@ -94,11 +94,11 @@ public final class ExpenseViewModel {
 
     public var totalThisMonth: Decimal {
         let cal = Calendar.current
-        let now = Date.now
-        let thisMonth = expenses.filter {
-            cal.isDate($0.date, equalTo: now, toGranularity: .month)
+        let now = cal.dateComponents([.year, .month], from: .now)
+        return expenses.reduce(Decimal(0)) { sum, e in
+            let c = cal.dateComponents([.year, .month], from: e.date)
+            return (c.year == now.year && c.month == now.month) ? sum + e.amount : sum
         }
-        return thisMonth.reduce(Decimal(0)) { $0 + $1.amount }
     }
 
     public func load() async {
@@ -144,8 +144,8 @@ public final class ExpenseViewModel {
     public func addExpense(_ expense: Expense) async -> Bool {
         do {
             let saved = try await expenseRepo.createExpense(expense)
-            let payerName = members.first(where: { $0.id == saved.paidByMemberID })?.name ?? "누군가"
-            await NotificationService.shared.notifyExpenseAdded(expense: saved, payerName: payerName)
+            // 새 지출 알림은 '다른 멤버'가 앱을 열 때 감지해 발송(HomeViewModel).
+            _ = saved
             await load()
             return true
         } catch RepositoryError.invalidInput(let reason) {

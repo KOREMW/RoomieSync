@@ -87,6 +87,10 @@ public final class HomeViewModel {
             let doneCount = todayChores.filter { completedChoreIDs.contains($0.id) }.count
             weekCompletionRate = todayChores.isEmpty ? 0 : Double(doneCount) / Double(todayChores.count)
 
+            // 다른 멤버의 새 활동(완료/지출) → 로컬 알림 (서버 푸시 없이 앱 진입 시 감지)
+            await notifyOthersActivity(myID: currentUserID, chores: todayChores,
+                                       completions: weekCompletions, expenses: pendingExpenses)
+
             let myUndoneCount = todayChores.filter { $0.currentAssigneeID == currentUserID }.count
             NotificationService.shared.setBadge(myUndoneCount)
 
@@ -142,6 +146,39 @@ public final class HomeViewModel {
         }
         // 내 앞 모든 요청을 '확인함'으로 기록(재알림 방지).
         mine.forEach { seen.insert($0.id.uuidString) }
+        UserDefaults.standard.set(Array(seen), forKey: key)
+    }
+
+    /// 다른 멤버의 새 완료/지출을 감지해 로컬 알림. id 기반 dedup, 첫 실행은 기준선만 기록.
+    private func notifyOthersActivity(myID: UUID?, chores: [Chore],
+                                     completions: [ChoreCompletion], expenses: [Expense]) async {
+        guard let myID else { return }
+        let choreByID = Dictionary(uniqueKeysWithValues: chores.map { ($0.id, $0) })
+
+        if NotificationService.shared.userPrefers(.memberCompletion) {
+            let others = completions.filter { $0.memberID != myID }
+            await fireForNew(others.map { ($0.id, $0) }, key: "seenCompletions.\(groupID.uuidString)") { c in
+                guard let chore = choreByID[c.choreID], let m = self.membersByID[c.memberID] else { return }
+                await NotificationService.shared.notifyMemberCompletion(member: m, chore: chore)
+            }
+        }
+        if NotificationService.shared.userPrefers(.expenseAdded) {
+            let others = expenses.filter { $0.paidByMemberID != myID }
+            await fireForNew(others.map { ($0.id, $0) }, key: "seenExpenses.\(groupID.uuidString)") { e in
+                let payer = self.membersByID[e.paidByMemberID]?.name ?? "누군가"
+                await NotificationService.shared.notifyExpenseAdded(expense: e, payerName: payer)
+            }
+        }
+    }
+
+    /// id 기반 미확인 항목에만 fire. 첫 실행(키 없음)이면 기준선만 기록해 과거분 스팸 방지.
+    private func fireForNew<T: Sendable>(_ items: [(UUID, T)], key: String, _ fire: @MainActor (T) async -> Void) async {
+        let firstRun = UserDefaults.standard.object(forKey: key) == nil
+        var seen = Set(UserDefaults.standard.stringArray(forKey: key) ?? [])
+        if !firstRun {
+            for (id, item) in items where !seen.contains(id.uuidString) { await fire(item) }
+        }
+        items.forEach { seen.insert($0.0.uuidString) }
         UserDefaults.standard.set(Array(seen), forKey: key)
     }
 

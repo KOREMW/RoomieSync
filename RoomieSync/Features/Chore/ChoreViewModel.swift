@@ -179,9 +179,8 @@ public final class ChoreViewModel {
             // 다음 멤버로 회전
             let rotated = ChoreRotation.rotateToNext(chore)
             _ = try await choreRepo.updateChore(rotated)
-            if let member = members.first(where: { $0.id == memberID }) {
-                await NotificationService.shared.notifyMemberCompletion(member: member, chore: rotated)
-            }
+            // 룸메 완료 알림은 '다른 멤버'가 앱을 열 때 감지해 발송(HomeViewModel).
+            // 여기서(본인 기기) 발송하면 자기 자신에게만 떠서 의미가 없으므로 호출하지 않는다.
             HapticManager.shared.success()
             await load()
         } catch {

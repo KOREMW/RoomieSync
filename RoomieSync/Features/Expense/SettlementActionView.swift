@@ -73,6 +73,7 @@ struct SettlementActionView: View {
     @State private var copied = false
     @State private var errorMessage: String? = nil
     @State private var payTarget: Settlement? = nil   // 송금 앱 선택 대상
+    @State private var requestedTo: Set<UUID> = []     // 송금 요청 보낸 상대
 
     private var me: Member? { meID.flatMap { membersByID[$0] } }
     private var toMe: [Settlement] { settlements.filter { $0.toMemberID == meID } }      // 받을 돈
@@ -122,12 +123,28 @@ struct SettlementActionView: View {
         Section {
             ForEach(toMe) { s in
                 let payer = membersByID[s.fromMemberID]?.name ?? "?"
-                HStack {
-                    Text("\(payer) 님에게 받기")
-                    Spacer()
-                    Text(CurrencyFormatter.format(s.amount)).fontWeight(.bold)
-                        .foregroundStyle(Tokens.receiveCardText)
+                VStack(alignment: .leading, spacing: Spacing.s) {
+                    HStack {
+                        Text("\(payer) 님에게 받기")
+                        Spacer()
+                        Text(CurrencyFormatter.format(s.amount)).fontWeight(.bold)
+                            .foregroundStyle(Tokens.receiveCardText)
+                    }
+                    Button {
+                        Task { await sendPaymentRequest(s) }
+                    } label: {
+                        Label(requestedTo.contains(s.fromMemberID) ? "요청 보냄 ✓" : "송금 요청 보내기",
+                              systemImage: "bell.badge")
+                            .font(Typo.caption()).fontWeight(.semibold)
+                            .padding(.horizontal, Spacing.m).padding(.vertical, 6)
+                            .background(requestedTo.contains(s.fromMemberID) ? Tokens.surfaceMuted : Tokens.receiveCardBG)
+                            .foregroundStyle(Tokens.receiveCardText)
+                            .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(requestedTo.contains(s.fromMemberID) || !(me?.hasAccount ?? false))
                 }
+                .padding(.vertical, 2)
             }
             if let me, me.hasAccount {
                 let shown = BankAccountFormatter.format(me.accountNumber ?? "", bank: me.bankName ?? "")
@@ -210,6 +227,29 @@ struct SettlementActionView: View {
 
     private var payDialogShown: Binding<Bool> {
         Binding(get: { payTarget != nil }, set: { if !$0 { payTarget = nil } })
+    }
+
+    @MainActor
+    private func sendPaymentRequest(_ s: Settlement) async {
+        guard let me, me.hasAccount else { return }
+        let debtorID = s.fromMemberID   // 받을 돈: 상대(fromMember)가 나에게 보낼 사람
+        let request = PaymentRequest(
+            groupID: groupID,
+            fromMemberID: me.id,
+            toMemberID: debtorID,
+            fromName: me.name,
+            amount: s.amount,
+            bankName: me.bankName,
+            accountNumber: me.accountNumber
+        )
+        do {
+            try await repositories.group.addPaymentRequest(request)
+            requestedTo.insert(debtorID)
+            HapticManager.shared.success()
+        } catch {
+            HapticManager.shared.error()
+            errorMessage = "송금 요청 전송에 실패했어요.\n(\(CKErrorMapper.userMessage(for: error)))"
+        }
     }
 
     private func sendVia(_ app: PaymentApp, settlement s: Settlement) {

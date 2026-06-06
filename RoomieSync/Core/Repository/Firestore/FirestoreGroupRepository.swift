@@ -36,6 +36,7 @@ public actor FirestoreGroupRepository: GroupRepositoryProtocol {
     private var groups: CollectionReference { db.collection("groups") }
     private var membersCol: CollectionReference { db.collection("members") }
     private var notesCol: CollectionReference { db.collection("notes") }
+    private var paymentRequestsCol: CollectionReference { db.collection("paymentRequests") }
 
     public init() {}
 
@@ -187,7 +188,7 @@ public actor FirestoreGroupRepository: GroupRepositoryProtocol {
     public func deleteGroup(_ groupID: UUID) async throws {
         await FirebaseAuthGate.shared.ensureSignedIn()
         let gid = groupID.uuidString
-        for col in ["members", "chores", "choreCompletions", "expenses", "settlements", "notes"] {
+        for col in ["members", "chores", "choreCompletions", "expenses", "settlements", "notes", "paymentRequests"] {
             let docs = try await db.collection(col).whereField("groupID", isEqualTo: gid).getDocuments()
             for d in docs.documents { try await d.reference.delete() }
         }
@@ -213,6 +214,17 @@ public actor FirestoreGroupRepository: GroupRepositoryProtocol {
         let snap = try await notesCol.whereField("groupID", isEqualTo: groupID.uuidString).getDocuments()
         return snap.documents.compactMap { GroupNote(fs: $0.data()) }
             .sorted { ($0.isPinned ? 1 : 0, $0.createdAt) > ($1.isPinned ? 1 : 0, $1.createdAt) }
+    }
+
+    public func addPaymentRequest(_ request: PaymentRequest) async throws {
+        await FirebaseAuthGate.shared.ensureSignedIn()
+        try await paymentRequestsCol.document(request.id.uuidString).setData(request.fsDict)
+    }
+
+    public func fetchPaymentRequests(groupID: UUID) async throws -> [PaymentRequest] {
+        await FirebaseAuthGate.shared.ensureSignedIn()
+        let snap = try await paymentRequestsCol.whereField("groupID", isEqualTo: groupID.uuidString).getDocuments()
+        return snap.documents.compactMap { PaymentRequest(fs: $0.data()) }.sorted { $0.createdAt < $1.createdAt }
     }
 
     public func addNote(groupID: UUID, authorMemberID: UUID, text: String) async throws -> GroupNote {

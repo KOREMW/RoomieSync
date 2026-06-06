@@ -54,6 +54,9 @@ public final class HomeViewModel {
             groupIcon = group.icon
             groupColorHex = group.iconColorHex
 
+            // 내 앞으로 온 새 송금 요청 → 로컬 알림 (서버 푸시 없이 동기화 시점에 처리)
+            await checkIncomingPaymentRequests(myID: me?.id)
+
             todayChores = try await choreRepo.fetchChores(groupID: groupID)
 
             let pendingExpenses = try await expenseRepo.fetchExpenses(groupID: groupID, includeSettled: false)
@@ -110,6 +113,30 @@ public final class HomeViewModel {
         )
         SharedSnapshotStore.write(snap)
         WidgetReloader.reloadAll()
+    }
+
+    /// 내 앞으로 온 송금 요청 중 '마지막 확인 이후 생성된 것'을 로컬 알림으로 띄운다.
+    private func checkIncomingPaymentRequests(myID: UUID?) async {
+        guard let myID else { return }
+        let key = "payreqSeen.\(groupID.uuidString)"
+        let lastSeen = UserDefaults.standard.double(forKey: key)
+        let requests = (try? await groupRepo.fetchPaymentRequests(groupID: groupID)) ?? []
+        let mine = requests.filter { $0.toMemberID == myID && $0.fromMemberID != myID }
+        guard let latest = mine.map({ $0.createdAt.timeIntervalSince1970 }).max() else { return }
+
+        if lastSeen == 0 {
+            // 첫 실행 기준선 — 과거 요청을 한꺼번에 알리지 않는다.
+            UserDefaults.standard.set(latest, forKey: key)
+            return
+        }
+        let fresh = mine.filter { $0.createdAt.timeIntervalSince1970 > lastSeen + 0.5 }
+        for req in fresh {
+            let account = (req.bankName.map { "\($0) " } ?? "") + (req.accountNumber ?? "")
+            await NotificationService.shared.notifyPaymentRequest(
+                fromName: req.fromName, amount: req.amount,
+                account: account.isEmpty ? nil : account)
+        }
+        UserDefaults.standard.set(latest, forKey: key)
     }
 
     private func drainWidgetActions() async {

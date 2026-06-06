@@ -104,6 +104,12 @@ service cloud.firestore {
       allow delete: if isMember(resource.data.groupID);
     }
 
+    match /paymentRequests/{id} {
+      allow read:           if isMember(resource.data.groupID);
+      allow create, update: if isMember(request.resource.data.groupID) && okString('fromName', 30);
+      allow delete:         if isMember(resource.data.groupID);
+    }
+
     // 그 외 경로는 모두 거부
     match /{document=**} {
       allow read, write: if false;

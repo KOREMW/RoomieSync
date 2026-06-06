@@ -44,6 +44,11 @@ public protocol GroupRepositoryProtocol: Sendable {
     /// 그룹 삭제.
     func deleteGroup(_ groupID: UUID) async throws
 
+    /// 송금 요청 보내기 — 받을 사람이 보낼 사람에게 요청 기록.
+    func addPaymentRequest(_ request: PaymentRequest) async throws
+    /// 그룹의 송금 요청 전체(상대 식별·중복 제거는 호출자 책임).
+    func fetchPaymentRequests(groupID: UUID) async throws -> [PaymentRequest]
+
     /// 현재 사용자가 속한 모든 그룹 — 멀티 그룹 지원 (시안 ⑤ 통계 셀렉터 대비).
     func fetchAllGroups() async throws -> [Group]
 

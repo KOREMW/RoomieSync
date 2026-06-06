@@ -176,6 +176,26 @@ public final class NotificationService: NSObject {
         try? await center.add(request)
     }
 
+    // MARK: - 시나리오 7: 송금 요청 (받을 사람 → 보낼 사람)
+
+    public func notifyPaymentRequest(fromName: String, amount: Decimal, account: String?) async {
+        guard userPrefers(.paymentRequest) else { return }
+        let content = UNMutableNotificationContent()
+        content.title = "💸 송금 요청 — \(fromName)"
+        let amountStr = CurrencyFormatter.format(amount)
+        content.body = account.map { "\(amountStr) 보내주세요 · \($0)" } ?? "\(amountStr) 보내주세요"
+        content.sound = .default
+        content.interruptionLevel = .active
+
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 0.5, repeats: false)
+        let request = UNNotificationRequest(
+            identifier: "payreq.\(UUID().uuidString)",
+            content: content,
+            trigger: trigger
+        )
+        try? await center.add(request)
+    }
+
     // MARK: - 시나리오 5: 월말 정산
 
     /// 매월 마지막 날 오전 10시.
@@ -243,6 +263,7 @@ public final class NotificationService: NSObject {
         case expenseAdded      = "notif.expenseAdded"
         case monthlySettlement = "notif.monthlySettlement"
         case announcement      = "notif.announcement"
+        case paymentRequest    = "notif.paymentRequest"
 
         public var displayName: String {
             switch self {
@@ -252,6 +273,7 @@ public final class NotificationService: NSObject {
             case .expenseAdded:      return "지출 입력 알림"
             case .monthlySettlement: return "월말 정산 알림"
             case .announcement:      return "새 공지 알림"
+            case .paymentRequest:    return "송금 요청 알림"
             }
         }
 

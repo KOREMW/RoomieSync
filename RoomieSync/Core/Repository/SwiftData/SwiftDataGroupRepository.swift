@@ -16,6 +16,16 @@ import SwiftData
 @ModelActor
 public actor SwiftDataGroupRepository: GroupRepositoryProtocol {
 
+    // 송금 요청은 기기 간 기능이라 로컬(SwiftData) 백엔드에선 인메모리로만 보관.
+    private var paymentRequests: [PaymentRequest] = []
+
+    public func addPaymentRequest(_ request: PaymentRequest) async throws {
+        paymentRequests.append(request)
+    }
+    public func fetchPaymentRequests(groupID: UUID) async throws -> [PaymentRequest] {
+        paymentRequests.filter { $0.groupID == groupID }.sorted { $0.createdAt < $1.createdAt }
+    }
+
     public func createGroup(name: String, icon: String, iconColorHex: String,
                             hostName: String, hostAvatarColorHex: String, hostAvatarIcon: String) async throws -> Group {
         let groupEntity = GroupEntity(

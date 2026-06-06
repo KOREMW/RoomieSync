@@ -122,6 +122,37 @@ extension GroupNote {
     }
 }
 
+// MARK: - PaymentRequest
+
+extension PaymentRequest {
+    var fsDict: [String: Any] {
+        var dict: [String: Any] = [
+            "id": id.uuidString,
+            "groupID": groupID.uuidString,
+            "fromMemberID": fromMemberID.uuidString,
+            "toMemberID": toMemberID.uuidString,
+            "fromName": fromName,
+            "amount": FSMap.dbl(amount),
+            "createdAt": FSMap.epoch(createdAt)
+        ]
+        if let bankName { dict["bankName"] = bankName }
+        if let accountNumber { dict["accountNumber"] = accountNumber }
+        return dict
+    }
+    init?(fs d: [String: Any]) {
+        guard let id = FSMap.uuid(d["id"]),
+              let gid = FSMap.uuid(d["groupID"]),
+              let from = FSMap.uuid(d["fromMemberID"]),
+              let to = FSMap.uuid(d["toMemberID"]),
+              let created = FSMap.date(d["createdAt"]) else { return nil }
+        self.init(id: id, groupID: gid, fromMemberID: from, toMemberID: to,
+                  fromName: FSMap.str(d["fromName"]) ?? "누군가",
+                  amount: FSMap.decimal(d["amount"]),
+                  bankName: FSMap.str(d["bankName"]), accountNumber: FSMap.str(d["accountNumber"]),
+                  createdAt: created)
+    }
+}
+
 // MARK: - Chore
 
 extension Chore {

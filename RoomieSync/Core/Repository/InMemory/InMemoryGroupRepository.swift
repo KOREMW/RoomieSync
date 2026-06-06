@@ -16,6 +16,7 @@ public actor InMemoryGroupRepository: GroupRepositoryProtocol {
     private var groups: [UUID: Group] = [:]
     private var members: [UUID: Member] = [:]
     private var notes: [UUID: GroupNote] = [:]
+    private var paymentRequests: [UUID: PaymentRequest] = [:]
 
     public init(seed: [(Group, [Member])] = []) {
         for (g, ms) in seed {
@@ -124,6 +125,14 @@ public actor InMemoryGroupRepository: GroupRepositoryProtocol {
     }
 
     // MARK: - 공지/메모 (#13)
+
+    public func addPaymentRequest(_ request: PaymentRequest) async throws {
+        paymentRequests[request.id] = request
+    }
+
+    public func fetchPaymentRequests(groupID: UUID) async throws -> [PaymentRequest] {
+        paymentRequests.values.filter { $0.groupID == groupID }.sorted { $0.createdAt < $1.createdAt }
+    }
 
     public func fetchNotes(groupID: UUID) async throws -> [GroupNote] {
         notes.values

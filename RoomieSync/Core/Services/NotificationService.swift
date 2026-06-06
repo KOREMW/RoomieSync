@@ -119,20 +119,24 @@ public final class NotificationService: NSObject {
 
     // MARK: - 시나리오 3: 룸메이트 완료 알림
 
+    /// 룸메이트 완료 알림. 가사/멤버 객체 조회가 실패해도 알림이 누락되지 않도록
+    /// 이름·제목 문자열(폴백 포함)을 직접 받는다.
     public func notifyMemberCompletion(
-        member: Member,
-        chore: Chore
+        completionID: UUID,
+        memberName: String,
+        choreTitle: String,
+        choreIcon: String = "✅"
     ) async {
         guard userPrefers(.memberCompletion) else { return }
         let content = UNMutableNotificationContent()
-        content.title = "\(member.name)이 \(chore.title)을(를) 완료했어요 ✓"
+        content.title = "\(memberName)이 \(choreIcon)\(choreTitle)을(를) 완료했어요 ✓"
         content.sound = .default
         content.interruptionLevel = .passive
         content.userInfo = ["route": "chores"]
 
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 0.5, repeats: false)
         let request = UNNotificationRequest(
-            identifier: "completion.\(chore.id.uuidString).\(member.id.uuidString)",
+            identifier: "completion.\(completionID.uuidString)",
             content: content,
             trigger: trigger
         )

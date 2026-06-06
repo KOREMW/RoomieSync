@@ -159,8 +159,12 @@ public final class HomeViewModel {
         if NotificationService.shared.userPrefers(.memberCompletion) {
             let items = completions.filter { $0.memberID != myID && $0.completedAt >= recent }
             await fireForNew(items.map { ($0.id, $0) }, key: "seenCompletions.\(groupID.uuidString)") { c in
-                guard let chore = choreByID[c.choreID], let m = self.membersByID[c.memberID] else { return }
-                await NotificationService.shared.notifyMemberCompletion(member: m, chore: chore)
+                // 가사/멤버 조회가 실패해도 알림을 누락하지 않도록 폴백 문자열 사용.
+                let chore = choreByID[c.choreID]
+                let name = self.membersByID[c.memberID]?.name ?? "룸메이트"
+                await NotificationService.shared.notifyMemberCompletion(
+                    completionID: c.id, memberName: name,
+                    choreTitle: chore?.title ?? "가사", choreIcon: chore?.icon ?? "✅")
             }
         }
         if NotificationService.shared.userPrefers(.expenseAdded) {

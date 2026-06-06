@@ -28,6 +28,16 @@ enum PaymentApp: String, CaseIterable, Identifiable {
         }
     }
 
+    var appName: String {
+        switch self {
+        case .toss:      return "토스"
+        case .tossbank:  return "토스뱅크"
+        case .kakaopay:  return "카카오페이"
+        case .kakaobank: return "카카오뱅크"
+        case .naverpay:  return "네이버페이"
+        }
+    }
+
     /// 토스는 계좌/금액을 미리 채워 송금창으로 이동.
     var prefillsTransfer: Bool { self == .toss }
 
@@ -74,6 +84,7 @@ struct SettlementActionView: View {
     @State private var errorMessage: String? = nil
     @State private var payTarget: Settlement? = nil   // 송금 앱 선택 대상
     @State private var requestedTo: Set<UUID> = []     // 송금 요청 보낸 상대
+    @State private var transferNotice: String? = nil   // 앱 미설치 등 안내
 
     private var me: Member? { meID.flatMap { membersByID[$0] } }
     private var toMe: [Settlement] { settlements.filter { $0.toMemberID == meID } }      // 받을 돈
@@ -113,6 +124,14 @@ struct SettlementActionView: View {
                 Button("확인", role: .cancel) { errorMessage = nil }
             } message: {
                 Text(errorMessage ?? "")
+            }
+            .alert("계좌 복사됨", isPresented: Binding(
+                get: { transferNotice != nil },
+                set: { if !$0 { transferNotice = nil } }
+            )) {
+                Button("확인", role: .cancel) { transferNotice = nil }
+            } message: {
+                Text(transferNotice ?? "")
             }
             .task { await load() }
         }
@@ -261,7 +280,13 @@ struct SettlementActionView: View {
         copySensitive("\(bank) \(account) \(amountStr)원")
         copied = true
         if let url = app.url(bank: bank, account: account, amount: s.amount) {
-            openURL(url) { _ in }   // 앱 미설치면 복사만 된 상태로 폴백
+            openURL(url) { accepted in
+                if !accepted {
+                    transferNotice = "\(app.appName) 앱이 설치되어 있지 않아요.\n계좌·금액을 클립보드에 복사했어요 — 다른 방법으로 송금해 주세요."
+                }
+            }
+        } else {
+            transferNotice = "앱을 열 수 없어 계좌·금액을 복사했어요."
         }
         payTarget = nil
     }

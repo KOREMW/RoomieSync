@@ -115,28 +115,26 @@ public final class HomeViewModel {
         WidgetReloader.reloadAll()
     }
 
-    /// 내 앞으로 온 송금 요청 중 '마지막 확인 이후 생성된 것'을 로컬 알림으로 띄운다.
+    /// 내 앞으로 온 송금 요청 중 '아직 알리지 않은 것'을 로컬 알림으로 띄운다.
+    /// ID 기반 중복관리 → 상대가 보낸 첫 요청도 (앱을 열거나 새로고침하면) 즉시 알림.
     private func checkIncomingPaymentRequests(myID: UUID?) async {
         guard let myID else { return }
-        let key = "payreqSeen.\(groupID.uuidString)"
-        let lastSeen = UserDefaults.standard.double(forKey: key)
+        let key = "payreqSeenIDs.\(groupID.uuidString)"
+        var seen = Set(UserDefaults.standard.stringArray(forKey: key) ?? [])
         let requests = (try? await groupRepo.fetchPaymentRequests(groupID: groupID)) ?? []
         let mine = requests.filter { $0.toMemberID == myID && $0.fromMemberID != myID }
-        guard let latest = mine.map({ $0.createdAt.timeIntervalSince1970 }).max() else { return }
 
-        if lastSeen == 0 {
-            // 첫 실행 기준선 — 과거 요청을 한꺼번에 알리지 않는다.
-            UserDefaults.standard.set(latest, forKey: key)
-            return
-        }
-        let fresh = mine.filter { $0.createdAt.timeIntervalSince1970 > lastSeen + 0.5 }
-        for req in fresh {
+        // 오래된 백로그 스팸 방지: 최근 7일 이내 + 아직 안 알린 요청만 알림.
+        let weekAgo = Date().addingTimeInterval(-7 * 24 * 3600)
+        for req in mine where !seen.contains(req.id.uuidString) && req.createdAt >= weekAgo {
             let account = (req.bankName.map { "\($0) " } ?? "") + (req.accountNumber ?? "")
             await NotificationService.shared.notifyPaymentRequest(
                 fromName: req.fromName, amount: req.amount,
                 account: account.isEmpty ? nil : account)
         }
-        UserDefaults.standard.set(latest, forKey: key)
+        // 내 앞 모든 요청을 '확인함'으로 기록(재알림 방지).
+        mine.forEach { seen.insert($0.id.uuidString) }
+        UserDefaults.standard.set(Array(seen), forKey: key)
     }
 
     private func drainWidgetActions() async {

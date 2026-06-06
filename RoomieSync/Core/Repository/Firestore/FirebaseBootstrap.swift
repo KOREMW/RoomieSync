@@ -21,6 +21,15 @@ public enum FirebaseBootstrap {
     /// 앱 시작 시 한 번 호출. 시작 시점에 단일 스레드에서만 만지므로 nonisolated(unsafe).
     nonisolated(unsafe) public private(set) static var isConfigured = false
 
+    /// 현재 익명 로그인 uid (없으면 nil). 멤버 ownerUID 매칭으로 '나'를 식별하는 데 사용.
+    public static func currentUID() -> String? {
+        #if canImport(FirebaseAuth)
+        return Auth.auth().currentUser?.uid
+        #else
+        return nil
+        #endif
+    }
+
     /// GoogleService-Info.plist 존재 시에만 Firebase 구성. 그 외에는 no-op.
     public static func configureIfAvailable() {
         #if canImport(FirebaseCore)

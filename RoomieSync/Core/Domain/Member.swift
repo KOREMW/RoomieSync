@@ -26,6 +26,9 @@ public struct Member: Identifiable, Hashable, Sendable, Codable {
     public var bankName: String?
     public var accountNumber: String?
 
+    /// 이 멤버를 만든 기기의 익명 인증 uid (#14). 기기에서 '나'를 식별하는 데 사용.
+    public var ownerUID: String?
+
     public init(
         id: UUID = UUID(),
         name: String,
@@ -34,7 +37,8 @@ public struct Member: Identifiable, Hashable, Sendable, Codable {
         joinedAt: Date = .now,
         groupID: UUID,
         bankName: String? = nil,
-        accountNumber: String? = nil
+        accountNumber: String? = nil,
+        ownerUID: String? = nil
     ) {
         self.id = id
         self.name = name
@@ -44,9 +48,10 @@ public struct Member: Identifiable, Hashable, Sendable, Codable {
         self.groupID = groupID
         self.bankName = bankName
         self.accountNumber = accountNumber
+        self.ownerUID = ownerUID
     }
 
-    /// 구버전 데이터(avatarIcon 키 없음) 디코딩 시 빈 문자열로 기본 처리.
+    /// 구버전 데이터(avatarIcon/ownerUID 키 없음) 디코딩 시 기본 처리.
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         self.id = try c.decode(UUID.self, forKey: .id)
@@ -57,6 +62,7 @@ public struct Member: Identifiable, Hashable, Sendable, Codable {
         self.groupID = try c.decode(UUID.self, forKey: .groupID)
         self.bankName = try c.decodeIfPresent(String.self, forKey: .bankName)
         self.accountNumber = try c.decodeIfPresent(String.self, forKey: .accountNumber)
+        self.ownerUID = try c.decodeIfPresent(String.self, forKey: .ownerUID)
     }
 
     /// 계좌 등록 여부.

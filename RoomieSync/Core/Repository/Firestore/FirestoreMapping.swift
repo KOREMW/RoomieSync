@@ -81,6 +81,7 @@ extension Member {
         ]
         if let bankName { dict["bankName"] = bankName }
         if let accountNumber { dict["accountNumber"] = accountNumber }
+        if let ownerUID { dict["ownerUID"] = ownerUID }
         return dict
     }
     init?(fs d: [String: Any]) {
@@ -92,7 +93,8 @@ extension Member {
         self.init(id: id, name: name, avatarColorHex: color,
                   avatarIcon: FSMap.str(d["avatarIcon"]) ?? "",
                   joinedAt: joined, groupID: gid,
-                  bankName: FSMap.str(d["bankName"]), accountNumber: FSMap.str(d["accountNumber"]))
+                  bankName: FSMap.str(d["bankName"]), accountNumber: FSMap.str(d["accountNumber"]),
+                  ownerUID: FSMap.str(d["ownerUID"]))
     }
 }
 

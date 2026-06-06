@@ -24,9 +24,18 @@ public enum CurrentMemberStore {
         UserDefaults.standard.set(memberID.uuidString, forKey: key(groupID))
     }
 
-    /// 멤버 목록에서 '나'를 해석. 저장된 id 우선, 없으면 첫 멤버로 폴백(레거시/단독 호스트).
+    /// 멤버 목록에서 '나'를 해석.
+    /// 1) 기기에 저장된 내 멤버 id (가장 빠름)
+    /// 2) 익명 로그인 uid 와 멤버 ownerUID 매칭 (재합류 없이도 동작, 재설치에도 안전)
+    /// 3) 첫 멤버로 폴백 (레거시/로컬 단독)
     public static func resolve(_ members: [Member], groupID: UUID) -> Member? {
         if let myID = id(for: groupID), let me = members.first(where: { $0.id == myID }) {
+            return me
+        }
+        if let uid = FirebaseBootstrap.currentUID(),
+           let me = members.first(where: { $0.ownerUID == uid }) {
+            // 다음을 위해 저장해 둔다(빠른 경로).
+            set(me.id, for: groupID)
             return me
         }
         return members.first

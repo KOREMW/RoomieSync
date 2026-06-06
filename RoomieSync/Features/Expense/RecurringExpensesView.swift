@@ -74,7 +74,7 @@ struct RecurringExpensesView: View {
     @MainActor
     private func load() async {
         members = (try? await repositories.group.fetchMembers(ofGroup: groupID)) ?? []
-        myMemberID = members.first?.id
+        myMemberID = CurrentMemberStore.resolve(members, groupID: groupID)?.id
         templates = ExpenseTemplateStore.load(groupID)
     }
 }

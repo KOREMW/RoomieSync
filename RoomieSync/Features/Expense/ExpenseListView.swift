@@ -42,12 +42,14 @@ struct ExpenseListView: View {
                             .frame(minHeight: 360)
                         }
                     } else {
-                        ForEach(vm.filtered) { exp in
-                            Button { editingExpense = exp } label: {
-                                expenseRow(exp, vm: vm)
+                        LazyVStack(spacing: Spacing.l) {
+                            ForEach(vm.filtered) { exp in
+                                Button { editingExpense = exp } label: {
+                                    expenseRow(exp, vm: vm)
+                                }
+                                .buttonStyle(.plain)
+                                .padding(.horizontal, Spacing.l)
                             }
-                            .buttonStyle(.plain)
-                            .padding(.horizontal, Spacing.l)
                         }
                     }
                 } else {

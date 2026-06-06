@@ -96,7 +96,7 @@ public final class StatsViewModel {
         errorMessage = nil
         do {
             let members = try await groupRepo.fetchMembers(ofGroup: groupID)
-            let myID = members.first?.id
+            let myID = CurrentMemberStore.resolve(members, groupID: groupID)?.id
 
             // 완료 기록은 전체를 한 번에 받아 30일 통계·게이미피케이션에 함께 사용.
             let allCompletions = try await choreRepo.fetchAllCompletions(groupID: groupID, since: nil)

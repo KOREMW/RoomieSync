@@ -269,17 +269,17 @@ struct MyPageView: View {
     private func leaveGroup() async {
         let repo = repositories.group
         do {
-            // 1) 내 멤버 제거 (myMemberID 가 비어도 멤버 목록 첫 멤버로 보강)
             let before = try await repo.fetchMembers(ofGroup: groupID)
-            if let id = myMemberID ?? before.first?.id {
-                try await repo.removeMember(id)
-            }
-            // 2) 남은 멤버가 없으면 그룹 자체 삭제 → 모임 목록에 남지 않도록
-            let remaining = try await repo.fetchMembers(ofGroup: groupID)
-            if remaining.isEmpty {
+            let myID = myMemberID ?? CurrentMemberStore.resolve(before, groupID: groupID)?.id
+            if before.count <= 1 {
+                // 내가 마지막(또는 유일) 멤버 → 아직 멤버인 상태에서 그룹을 통째로 삭제.
+                // (격리 규칙: 멤버일 때만 삭제 허용 → 나를 먼저 빼면 삭제가 거부되어 빈 모임이 남음)
                 try await repo.deleteGroup(groupID)
+            } else if let myID {
+                try await repo.removeMember(myID)
             }
-            // 3) 다른 모임이 있으면 그 모임의 홈으로, 없으면 시작 화면("")
+            CurrentMemberStore.clear(for: groupID)
+            // 다른 모임이 있으면 그 모임의 홈으로, 없으면 시작 화면("")
             let others = (try? await repo.fetchAllGroups())?.filter { $0.id != groupID } ?? []
             currentGroupIDString = others.first?.id.uuidString ?? ""
         } catch {
@@ -293,7 +293,7 @@ struct MyPageView: View {
             let group = try await repositories.group.fetchGroup(id: groupID)
             inviteCode = group.inviteCode
             let members = try await repositories.group.fetchMembers(ofGroup: groupID)
-            if let me = members.first {
+            if let me = CurrentMemberStore.resolve(members, groupID: groupID) {
                 myMemberID = me.id
                 myName = me.name
                 myAvatarColorIndex = AvatarPalette.hexValues.firstIndex(of: me.avatarColorHex) ?? 0

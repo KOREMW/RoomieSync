@@ -47,8 +47,9 @@ public final class HomeViewModel {
             let members = try await groupRepo.fetchMembers(ofGroup: groupID)
             let group = try await groupRepo.fetchGroup(id: groupID)
             membersByID = Dictionary(uniqueKeysWithValues: members.map { ($0.id, $0) })
-            currentUserID = members.first?.id
-            greetingName = members.first?.name ?? ""
+            let me = CurrentMemberStore.resolve(members, groupID: groupID)
+            currentUserID = me?.id
+            greetingName = me?.name ?? ""
             groupName = group.name
             groupIcon = group.icon
             groupColorHex = group.iconColorHex

@@ -204,7 +204,8 @@ struct ExpenseAddView: View {
                             shares.map { ($0.key, NSDecimalNumber(decimal: $0.value).stringValue) })
                     }
                 } else {
-                    paidByID = viewModel.members.first?.id
+                    // 기본 결제자 = 이 기기의 '나'(없으면 첫 멤버)
+                    paidByID = CurrentMemberStore.resolve(viewModel.members, groupID: viewModel.groupID)?.id
                     participantIDs = Set(viewModel.members.map(\.id))
                 }
             }

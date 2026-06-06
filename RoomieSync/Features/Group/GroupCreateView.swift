@@ -129,6 +129,10 @@ struct GroupCreateView: View {
                 hostAvatarColorHex: color,
                 hostAvatarIcon: hostAvatarIcon
             )
+            // 이 기기의 '나' = 방금 만든 호스트 멤버. (사용자 식별)
+            if let hostID = group.memberIDs.first {
+                CurrentMemberStore.set(hostID, for: group.id)
+            }
             generatedCode = group.inviteCode
             generatedGroupID = group.id
             UIPasteboard.general.string = group.inviteCode
@@ -197,12 +201,14 @@ struct GroupJoinView: View {
         do {
             let group = try await repositories.group.findGroup(byInviteCode: InputValidator.inviteCode(code))
             let color = AvatarPalette.hex(at: selectedColorIndex)
-            _ = try await repositories.group.addMember(
+            let me = try await repositories.group.addMember(
                 toGroup: group.id,
                 name: InputValidator.name(myName),
                 avatarColorHex: color,
                 avatarIcon: avatarIcon
             )
+            // 이 기기의 '나' = 방금 합류한 멤버. (호스트로 오인되지 않도록)
+            CurrentMemberStore.set(me.id, for: group.id)
             onJoined(group.id)
         } catch RepositoryError.notFound {
             errorMessage = "초대 코드를 찾을 수 없어요. 다시 확인해주세요."

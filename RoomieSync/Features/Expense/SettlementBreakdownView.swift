@@ -99,7 +99,7 @@ struct SettlementBreakdownView: View {
         do {
             let members = try await repositories.group.fetchMembers(ofGroup: groupID)
             membersByID = Dictionary(uniqueKeysWithValues: members.map { ($0.id, $0) })
-            meID = members.first?.id
+            meID = CurrentMemberStore.resolve(members, groupID: groupID)?.id
             expenses = try await repositories.expense.fetchExpenses(groupID: groupID, includeSettled: false)
         } catch {
             expenses = []

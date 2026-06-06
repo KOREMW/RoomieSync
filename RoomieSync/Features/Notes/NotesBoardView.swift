@@ -107,7 +107,7 @@ struct NotesBoardView: View {
         do {
             let members = try await repositories.group.fetchMembers(ofGroup: groupID)
             membersByID = Dictionary(uniqueKeysWithValues: members.map { ($0.id, $0) })
-            myMemberID = members.first?.id
+            myMemberID = CurrentMemberStore.resolve(members, groupID: groupID)?.id
             notes = try await repositories.group.fetchNotes(groupID: groupID)
             // 보드를 열어 확인했으므로 가장 최신 공지 시각을 '읽음'으로 기록 → 홈 배너 NEW 해제.
             if let latest = notes.map(\.createdAt).max()?.timeIntervalSince1970 {

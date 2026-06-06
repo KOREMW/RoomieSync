@@ -182,7 +182,7 @@ struct SettlementActionView: View {
         do {
             let members = try await repositories.group.fetchMembers(ofGroup: groupID)
             membersByID = Dictionary(uniqueKeysWithValues: members.map { ($0.id, $0) })
-            meID = members.first?.id
+            meID = CurrentMemberStore.resolve(members, groupID: groupID)?.id
             let pending = try await repositories.expense.fetchExpenses(groupID: groupID, includeSettled: false)
             pendingExpenseIDs = pending.map(\.id)
             settlements = SettlementCalculator.calculate(expenses: pending, members: members, groupID: groupID)

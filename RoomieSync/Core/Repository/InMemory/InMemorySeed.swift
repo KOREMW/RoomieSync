@@ -15,9 +15,12 @@ public enum InMemorySeed {
     /// 시안과 정확히 같은 3인 그룹 + 4개 가사 + 5개 지출.
     public static func preview() -> (RepositoryBundle, UUID) {
         let groupID = UUID()
-        let m1 = Member(id: UUID(), name: "김지훈", avatarColorHex: "#4F46E5", groupID: groupID)
-        let m2 = Member(id: UUID(), name: "박서연", avatarColorHex: "#10B981", groupID: groupID)
-        let m3 = Member(id: UUID(), name: "이민호", avatarColorHex: "#F59E0B", groupID: groupID)
+        let m1 = Member(id: UUID(), name: "김지훈", avatarColorHex: "#4F46E5", groupID: groupID,
+                        bankName: "카카오뱅크", accountNumber: "333301234567")
+        let m2 = Member(id: UUID(), name: "박서연", avatarColorHex: "#10B981", groupID: groupID,
+                        bankName: "토스뱅크", accountNumber: "100098765432")
+        let m3 = Member(id: UUID(), name: "이민호", avatarColorHex: "#F59E0B", groupID: groupID,
+                        bankName: "신한", accountNumber: "110234567890")
         let group = Group(
             id: groupID,
             name: "우리집",

@@ -8,15 +8,6 @@
 
 엄민욱 (2091188)
 
-<br/>
-
-<p align="center">
-  <img src="docs/screens/01_home.png" width="210" alt="홈">
-  <img src="docs/screens/02_chore.png" width="210" alt="가사">
-  <img src="docs/screens/03_expense.png" width="210" alt="지출">
-  <img src="docs/screens/05_stats.png" width="210" alt="통계">
-</p>
-
 </div>
 
 ---
@@ -94,9 +85,21 @@ MVVM + Repository 패턴으로, 도메인 로직은 백엔드 구현에 의존�
 
 #### 구현 결과
 
-| 홈 | 가사 | 지출 | 지출 추가 | 통계 |
-|---|---|---|---|---|
-| <img src="docs/screens/01_home.png" width="150"> | <img src="docs/screens/02_chore.png" width="150"> | <img src="docs/screens/03_expense.png" width="150"> | <img src="docs/screens/04_expense_add.png" width="150"> | <img src="docs/screens/05_stats.png" width="150"> |
+<p align="center">
+  <img src="docs/screens/01_home.png" width="270" alt="홈">
+  &nbsp;&nbsp;
+  <img src="docs/screens/02_chore.png" width="270" alt="가사">
+  &nbsp;&nbsp;
+  <img src="docs/screens/03_expense.png" width="270" alt="지출">
+</p>
+<p align="center"><b>홈</b> · 오늘 할 일·정산 요약 &nbsp;|&nbsp; <b>가사</b> · 자동 배정·회전 &nbsp;|&nbsp; <b>지출</b> · 입력·검색·정산 필터</p>
+
+<p align="center">
+  <img src="docs/screens/04_expense_add.png" width="270" alt="지출 추가">
+  &nbsp;&nbsp;
+  <img src="docs/screens/05_stats.png" width="270" alt="통계">
+</p>
+<p align="center"><b>지출 추가</b> · 결제자·참여자 선택, 부담 실시간 계산 &nbsp;|&nbsp; <b>통계</b> · 공정 지수·레벨·뱃지</p>
 
 #### 기대 효과
 

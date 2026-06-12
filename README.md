@@ -150,7 +150,7 @@ open RoomieSync.xcodeproj                    # ⌘R 실행
 
 <div align="center">
 
-[<img src="docs/screens/01_home.png" width="240" alt="시연 영상 보기">](https://youtube.com/watch?v=PLACEHOLDER)
+[<img src="https://i.ytimg.com/vi/Lx0CKEFAxxU/hqdefault.jpg" width="480" alt="RoomieSync 시연 영상">](https://youtu.be/Lx0CKEFAxxU)
 
 </div>
 

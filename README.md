@@ -85,21 +85,25 @@ MVVM + Repository 패턴으로, 도메인 로직은 백엔드 구현에 의존�
 
 #### 구현 결과
 
-<p align="center">
-  <img src="docs/screens/01_home.png" width="270" alt="홈">
-  &nbsp;&nbsp;
-  <img src="docs/screens/02_chore.png" width="270" alt="가사">
-  &nbsp;&nbsp;
-  <img src="docs/screens/03_expense.png" width="270" alt="지출">
-</p>
-<p align="center"><b>홈</b> · 오늘 할 일·정산 요약 &nbsp;|&nbsp; <b>가사</b> · 자동 배정·회전 &nbsp;|&nbsp; <b>지출</b> · 입력·검색·정산 필터</p>
+<b>홈</b> — 오늘 할 일·이번 주 정산을 한 화면에 요약
 
-<p align="center">
-  <img src="docs/screens/04_expense_add.png" width="270" alt="지출 추가">
-  &nbsp;&nbsp;
-  <img src="docs/screens/05_stats.png" width="270" alt="통계">
-</p>
-<p align="center"><b>지출 추가</b> · 결제자·참여자 선택, 부담 실시간 계산 &nbsp;|&nbsp; <b>통계</b> · 공정 지수·레벨·뱃지</p>
+<img src="docs/screens/01_home.png" width="240" alt="홈">
+
+<b>가사</b> — 멤버 순서대로 자동 배정, 날짜가 지나면 다음 멤버로 회전
+
+<img src="docs/screens/02_chore.png" width="240" alt="가사">
+
+<b>지출</b> — 카테고리별 입력, 검색·정렬, 정산 대기/완료 필터
+
+<img src="docs/screens/03_expense.png" width="240" alt="지출">
+
+<b>지출 추가</b> — 결제자·참여자 선택과 각자 부담 실시간 계산
+
+<img src="docs/screens/04_expense_add.png" width="240" alt="지출 추가">
+
+<b>통계</b> — 공정 지수, 월별 추이, 레벨·뱃지
+
+<img src="docs/screens/05_stats.png" width="240" alt="통계">
 
 #### 기대 효과
 

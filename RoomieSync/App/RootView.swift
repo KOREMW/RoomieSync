@@ -23,7 +23,10 @@ struct RootView: View {
     var body: some View {
         // 도메인 모델 Group 과 이름이 겹치므로 SwiftUI.Group 으로 명시.
         SwiftUI.Group {
-            if !didCompleteOnboarding {
+            if DemoMode.isEnabled {
+                // 스크린샷/시연용: 시드된 그룹으로 바로 진입
+                MainTabView(groupID: DemoMode.seeded().1).id(DemoMode.seeded().1)
+            } else if !didCompleteOnboarding {
                 OnboardingView(onFinish: { didCompleteOnboarding = true })
             } else if currentGroupIDString.isEmpty {
                 GroupEntryView(onGroupReady: { id in

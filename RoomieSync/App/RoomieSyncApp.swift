@@ -33,7 +33,7 @@ struct RoomieSyncApp: App {
     var body: some Scene {
         WindowGroup {
             RootView()
-                .environment(\.repositories, backendBundle())
+                .environment(\.repositories, DemoMode.isEnabled ? DemoMode.seeded().0 : backendBundle())
         }
         .modelContainer(container)
     }

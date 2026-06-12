@@ -154,6 +154,7 @@ public final class HomeViewModel {
     private func notifyOthersActivity(myID: UUID?, chores: [Chore],
                                      completions: [ChoreCompletion], expenses: [Expense]) async {
         guard let myID else { return }
+        if DemoMode.isEnabled { return }   // 스크린샷 시 배너가 헤더를 가리지 않도록
         let recent = Date().addingTimeInterval(-2 * 24 * 3600)
         let choreByID = Dictionary(uniqueKeysWithValues: chores.map { ($0.id, $0) })
 

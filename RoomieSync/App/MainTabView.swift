@@ -12,7 +12,12 @@ import SwiftUI
 struct MainTabView: View {
     let groupID: UUID
     @Environment(\.repositories) private var repositories
-    @State private var tab: Int = 0
+    @State private var tab: Int
+
+    init(groupID: UUID) {
+        self.groupID = groupID
+        _tab = State(initialValue: DemoMode.isEnabled ? DemoMode.initialTab : 0)
+    }
     @State private var myAvatarIcon: String = ""
     @State private var router = AppRouter.shared
     @State private var showSettlement = false

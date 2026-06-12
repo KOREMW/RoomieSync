@@ -12,9 +12,13 @@
 [![Firebase](https://img.shields.io/badge/Firebase-Firestore%20%2B%20Auth-FFCA28.svg)](https://firebase.google.com)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-![데모 GIF](docs/demo.gif)
+<p align="center">
+  <img src="docs/screens/01_home.png" width="220" alt="홈">
+  <img src="docs/screens/02_chore.png" width="220" alt="가사">
+  <img src="docs/screens/05_stats.png" width="220" alt="통계">
+</p>
 
-[📺 시연 영상 보기 (YouTube)](https://youtube.com/watch?v=PLACEHOLDER) · [📦 GitHub QR](docs/qr.png)
+[📺 시연 영상 보기 (YouTube)](https://youtube.com/watch?v=PLACEHOLDER) · <a href="docs/qr.png">📦 GitHub QR</a>
 
 </div>
 

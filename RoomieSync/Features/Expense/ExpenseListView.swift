@@ -106,6 +106,7 @@ struct ExpenseListView: View {
                 viewModel = ExpenseViewModel(groupID: groupID, repositories: repositories)
             }
             await viewModel?.load()
+            if DemoMode.presentAddExpense { showAddSheet = true }   // 스크린샷용
         }
     }
 

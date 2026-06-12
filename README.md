@@ -150,7 +150,7 @@ open RoomieSync.xcodeproj                    # ⌘R 실행
 
 <div align="center">
 
-[<img src="https://i.ytimg.com/vi/Lx0CKEFAxxU/hqdefault.jpg" width="480" alt="RoomieSync 시연 영상">](https://youtu.be/Lx0CKEFAxxU)
+[<img src="RoomieSync/Resources/Assets.xcassets/AppIcon.appiconset/icon-1024.png" width="240" alt="RoomieSync 시연 영상">](https://youtu.be/Lx0CKEFAxxU)
 
 </div>
 
@@ -158,6 +158,6 @@ open RoomieSync.xcodeproj                    # ⌘R 실행
 
 <div align="center">
 
-[MIT License](LICENSE) · 작성자 **엄민욱 (2091188)** · 한성대학교 컴퓨터공학부
+[MIT License](LICENSE) · 작성자 **엄민욱 (2091188)** · 한성대학교 IT공과대학
 
 </div>

@@ -34,6 +34,8 @@ struct RoomieSyncApp: App {
         WindowGroup {
             RootView()
                 .environment(\.repositories, DemoMode.isEnabled ? DemoMode.seeded().0 : backendBundle())
+                // 디자인 토큰이 라이트 고정색이라 다크모드에서는 흰 카드 위 흰 글자가 됨 → 라이트 고정.
+                .preferredColorScheme(.light)
         }
         .modelContainer(container)
     }

@@ -85,25 +85,18 @@ MVVM + Repository 패턴으로, 도메인 로직은 백엔드 구현에 의존�
 
 #### 구현 결과
 
-<b>홈</b> — 오늘 할 일·이번 주 정산을 한 화면에 요약
-
-<img src="docs/screens/01_home.png" width="240" alt="홈">
-
-<b>가사</b> — 멤버 순서대로 자동 배정, 날짜가 지나면 다음 멤버로 회전
-
-<img src="docs/screens/02_chore.png" width="240" alt="가사">
-
-<b>지출</b> — 카테고리별 입력, 검색·정렬, 정산 대기/완료 필터
-
-<img src="docs/screens/03_expense.png" width="240" alt="지출">
-
-<b>지출 추가</b> — 결제자·참여자 선택과 각자 부담 실시간 계산
-
-<img src="docs/screens/04_expense_add.png" width="240" alt="지출 추가">
-
-<b>통계</b> — 공정 지수, 월별 추이, 레벨·뱃지
-
-<img src="docs/screens/05_stats.png" width="240" alt="통계">
+<table>
+  <tr>
+    <td align="center" width="33%"><img src="docs/screens/01_home.png" width="200" alt="홈"><br/><br/><b>홈</b><br/>오늘 할 일·정산 요약</td>
+    <td align="center" width="33%"><img src="docs/screens/02_chore.png" width="200" alt="가사"><br/><br/><b>가사</b><br/>자동 배정·날짜 기준 회전</td>
+    <td align="center" width="33%"><img src="docs/screens/03_expense.png" width="200" alt="지출"><br/><br/><b>지출</b><br/>입력·검색·정산 필터</td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screens/04_expense_add.png" width="200" alt="지출 추가"><br/><br/><b>지출 추가</b><br/>결제자·참여자 선택, 부담 실시간 계산</td>
+    <td align="center"><img src="docs/screens/05_stats.png" width="200" alt="통계"><br/><br/><b>통계</b><br/>공정 지수·레벨·뱃지</td>
+    <td></td>
+  </tr>
+</table>
 
 #### 기대 효과
 
